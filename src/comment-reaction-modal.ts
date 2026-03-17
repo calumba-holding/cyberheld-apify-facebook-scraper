@@ -1,0 +1,82 @@
+import type { Locator, Page } from 'playwright';
+
+const MODAL_SELECTOR = 'div[role="dialog"]:visible';
+const MODAL_READY_SELECTOR = '[role="tab"], a[aria-label^="Profile picture of"], [aria-label="Close"][role="button"]';
+const REACTION_BUTTON_SELECTOR = '[role="button"][aria-label*="reactions; see who reacted to this"]';
+
+const dispatchDomClick = async (button: Locator): Promise<void> => {
+    await button.evaluate((element) => {
+        const node = element as HTMLElement;
+        node.scrollIntoView({ block: 'center', inline: 'center' });
+        node.focus?.();
+        const mouse = { bubbles: true, cancelable: true, view: window };
+        const pointer = { ...mouse, pointerId: 1, pointerType: 'mouse', isPrimary: true };
+        node.dispatchEvent(new PointerEvent('pointerdown', pointer));
+        node.dispatchEvent(new MouseEvent('mousedown', mouse));
+        node.dispatchEvent(new PointerEvent('pointerup', pointer));
+        node.dispatchEvent(new MouseEvent('mouseup', mouse));
+        node.dispatchEvent(new MouseEvent('click', mouse));
+    });
+};
+
+const waitForReactionModal = async (page: Page, baselineDialogs: number): Promise<Locator | null> => {
+    const dialogs = page.locator(MODAL_SELECTOR);
+
+    for (let attempt = 0; attempt < 18; attempt++) {
+        const count = await dialogs.count().catch(() => 0);
+        if (count > baselineDialogs || count > 0) {
+            const modal = dialogs.last();
+            const ready = await modal.locator(MODAL_READY_SELECTOR).first().isVisible().catch(() => false);
+            if (ready) return modal;
+        }
+        await page.waitForTimeout(250);
+    }
+
+    return null;
+};
+
+export const findReactionButton = async (comment: Locator): Promise<Locator | null> => {
+    const buttons = comment.locator(REACTION_BUTTON_SELECTOR);
+
+    for (let index = 0; index < await buttons.count(); index++) {
+        const button = buttons.nth(index);
+        if (await button.isVisible().catch(() => false)) return button;
+    }
+
+    return (await buttons.count()) ? buttons.first() : null;
+};
+
+export const openCommentReactionModal = async (page: Page, comment: Locator): Promise<Locator | null> => {
+    const button = await findReactionButton(comment);
+    if (!button) return null;
+
+    const baselineDialogs = await page.locator(MODAL_SELECTOR).count().catch(() => 0);
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+        await button.scrollIntoViewIfNeeded().catch(() => undefined);
+        await page.waitForTimeout(250);
+        await button.click({ force: true, delay: 100 }).catch(() => undefined);
+        if (attempt >= 1) await dispatchDomClick(button).catch(() => undefined);
+        if (attempt >= 2) {
+            const box = await button.boundingBox();
+            if (box) await page.mouse.click(box.x + (box.width / 2), box.y + (box.height / 2));
+        }
+
+        const modal = await waitForReactionModal(page, baselineDialogs);
+        if (modal) return modal;
+        await page.waitForTimeout(350);
+    }
+
+    return null;
+};
+
+export const closeCommentReactionModal = async (page: Page, modal: Locator): Promise<void> => {
+    const close = modal.locator('[aria-label="Close"][role="button"]').first();
+    if (await close.isVisible().catch(() => false)) {
+        await close.click({ force: true }).catch(() => undefined);
+    } else {
+        await page.keyboard.press('Escape').catch(() => undefined);
+    }
+
+    await page.waitForTimeout(700);
+};
