@@ -1,65 +1,253 @@
-## PlaywrightCrawler template
+# Facebook Post Scraper Actor
 
-<!-- This is an Apify template readme -->
+This repository is intended to become an **Apify Actor** for scraping a single Facebook post URL and returning a **structured result** containing:
 
-This template is a production ready boilerplate for developing an [Actor](https://apify.com/actors) with `PlaywrightCrawler`. Use this to bootstrap your projects using the most up-to-date code.
+- the post itself
+- all discovered comments
+- all discovered reactions on the post
+- all discovered reactions on the comments
+- an optional video recording of the scrape session
 
-> We decided to split Apify SDK into two libraries, Crawlee and Apify SDK v3. Crawlee will retain all the crawling and scraping-related tools and will always strive to be the best [web scraping](https://apify.com/web-scraping) library for its community. At the same time, Apify SDK will continue to exist, but keep only the Apify-specific features related to building Actors on the Apify platform. Read the upgrading guide to learn about the changes.
+## Status
 
-## Resources
+**Work in progress.**
 
-If you're looking for examples or want to learn more visit:
+The current codebase started from a generic Apify Playwright template and is still being aligned with the Actor contract described below. This README describes the **intended product behavior** and the architecture the project should converge to.
 
-- [Crawlee + Apify Platform guide](https://crawlee.dev/docs/guides/apify-platform)
-- [Documentation](https://crawlee.dev/api/playwright-crawler/class/PlaywrightCrawler) and [examples](https://crawlee.dev/docs/examples/playwright-crawler)
-- [Node.js tutorials](https://docs.apify.com/academy/node-js) in Academy
-- [Scraping single-page applications with Playwright](https://blog.apify.com/scraping-single-page-applications-with-playwright/)
-- [How to scale Puppeteer and Playwright](https://blog.apify.com/how-to-scale-puppeteer-and-playwright/)
-- [Integration with Zapier](https://apify.com/integrations), Make, GitHub, Google Drive and other apps
-- [Video guide on getting scraped data using Apify API](https://www.youtube.com/watch?v=ViYYDHSBAKM)
-- A short guide on how to build web scrapers using code templates:
+## Goal
 
-[web scraper template](https://www.youtube.com/watch?v=u-i-Korzf8w)
+Build a reusable Actor that:
 
+1. accepts a Facebook post URL as input
+2. scrapes the post, comments, and reactions
+3. returns one structured dataset item per input URL
+4. optionally stores a video artifact for the scrape run
+5. works both locally and, in managed mode, in Docker / on the Apify platform
 
-## Getting started
+## Intended Input
 
-For complete information [see this article](https://docs.apify.com/platform/actors/development#build-actor-locally). To run the Actor use the following command:
+The Actor should accept a single input object like this:
 
-```bash
-apify run
+```json
+{
+  "url": "https://www.facebook.com/share/p/...",
+  "browserMode": "cdp",
+  "recordVideo": true
+}
 ```
 
-## Deploy to Apify
+### Input fields
 
-### Connect Git repository to Apify
+- `url` **required**  
+  The Facebook post URL to scrape.
 
-If you've created a Git repository for the project, you can easily connect to Apify:
+- `browserMode` optional  
+  One of:
+  - `cdp` — connect to an already running local Chrome session
+  - `managed` — launch Playwright inside the Actor
 
-1. Go to [Actor creation page](https://console.apify.com/actors/new)
-2. Click on **Link Git Repository** button
+- `recordVideo` optional  
+  If enabled, the Actor records the session and stores the video as an artifact.
 
-### Push project on your local machine to Apify
+## Browser Modes
 
-You can also deploy the project on your local machine to Apify without the need for the Git repository.
+### `cdp`
+Use this mode when scraping through a **real local Chrome session**.
 
-1. Log in to Apify. You will need to provide your [Apify API Token](https://console.apify.com/account/integrations) to complete this action.
+This is useful for:
+- authenticated scraping
+- stealthier local runs
+- development against an already logged-in browser profile
 
-    ```bash
-    apify login
-    ```
+### `managed`
+Use this mode when running as a portable Actor in:
+- Docker
+- CI
+- Apify platform
 
-2. Deploy your Actor. This command will deploy and build the Actor on the Apify Platform. You can find your newly created Actor under [Actors -> My Actors](https://console.apify.com/actors?tab=my).
+In this mode, the Actor launches the browser itself using Playwright.
 
-    ```bash
-    apify push
-    ```
+## Intended Output Model
 
-## Documentation reference
+For each input URL, the Actor should emit **exactly one dataset item**.
 
-To learn more about Apify and Actors, take a look at the following resources:
+### Dataset item
 
-- [Apify SDK for JavaScript documentation](https://docs.apify.com/sdk/js)
-- [Apify SDK for Python documentation](https://docs.apify.com/sdk/python)
-- [Apify Platform documentation](https://docs.apify.com/platform)
-- [Join our developer community on Discord](https://discord.com/invite/jyEM2PRvMU)
+```json
+{
+  "input": {
+    "url": "https://www.facebook.com/share/p/..."
+  },
+  "scrape": {
+    "jobId": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "ok",
+    "scrapedAt": "2026-03-18T12:00:00.000Z",
+    "browserMode": "cdp",
+    "allCommentsLoaded": true,
+    "allPostReactionsLoaded": true,
+    "allCommentReactionsLoaded": true,
+    "warnings": []
+  },
+  "post": {
+    "id": "facebook-post-id",
+    "url": "https://www.facebook.com/share/p/...",
+    "author": {
+      "name": "Page or User Name",
+      "profileUrl": "https://facebook.com/..."
+    },
+    "text": "Post text",
+    "publishedAt": null,
+    "reactionSummary": {
+      "total": 123,
+      "byType": {
+        "like": 80,
+        "love": 20,
+        "care": 0,
+        "haha": 10,
+        "wow": 5,
+        "sad": 4,
+        "angry": 4
+      }
+    },
+    "reactions": [
+      {
+        "userName": "Max Mustermann",
+        "profileUrl": "https://facebook.com/...",
+        "type": "like"
+      }
+    ]
+  },
+  "comments": [
+    {
+      "id": "comment-1",
+      "parentCommentId": null,
+      "depth": 0,
+      "author": {
+        "name": "Erika Musterfrau",
+        "profileUrl": "https://facebook.com/..."
+      },
+      "text": "Comment text",
+      "publishedAt": null,
+      "reactionSummary": {
+        "total": 8,
+        "byType": {
+          "like": 7,
+          "love": 1
+        }
+      },
+      "reactions": [
+        {
+          "userName": "John Doe",
+          "profileUrl": "https://facebook.com/...",
+          "type": "like"
+        }
+      ]
+    }
+  ],
+  "artifacts": {
+    "video": {
+      "present": true,
+      "key": "recordings/550e8400-e29b-41d4-a716-446655440000.mp4",
+      "contentType": "video/mp4",
+      "localPath": "storage/key_value_stores/default/recordings/550e8400-e29b-41d4-a716-446655440000.mp4"
+    }
+  }
+}
+```
+
+## Storage Conventions
+
+The Actor should follow normal Apify storage conventions:
+
+### Default dataset
+Use the **default dataset** for the main structured scrape result.
+
+- one input URL → one dataset item
+- no binary data in dataset items
+
+### Default key-value store
+Use the **default key-value store** for artifacts such as video files.
+
+Recommended naming:
+
+- video key: `recordings/<jobId>.mp4`
+
+The `jobId` must be a UUID generated per scrape job and used consistently across outputs so dataset rows and artifacts can be joined reliably.
+
+## Intended Runtime Flow
+
+1. Read Actor input
+2. Generate a UUID `jobId`
+3. Resolve browser mode (`cdp` or `managed`)
+4. Open the target Facebook post URL
+5. Extract:
+   - post metadata
+   - post reactions
+   - all comments
+   - reactions for each comment
+6. Optionally record video
+7. Store video in KVS if enabled
+8. Emit one final dataset item containing:
+   - input metadata
+   - scrape metadata
+   - post data
+   - comment data
+   - artifact references
+
+## Development Principles
+
+This project should avoid these anti-patterns:
+
+- hardcoded target URLs in runtime code
+- local-only assumptions without a configurable runtime mode
+- macOS-only recording as the primary recording strategy
+- splitting the main result across unrelated KVS entries
+- undocumented output formats
+
+## Planned Actor Surface
+
+### Input schema
+`.actor/input_schema.json` should match the runtime contract:
+- `url`
+- `browserMode`
+- `recordVideo`
+
+### Output schema
+`.actor/output_schema.json` should describe **where outputs are stored**:
+- default dataset for structured output
+- default key-value store for video artifacts
+
+### Dataset schema
+`.actor/dataset_schema.json` should describe the result shape shown in Apify Console.
+
+## Local development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run in development mode:
+
+```bash
+npm run start:dev
+```
+
+Build:
+
+```bash
+npm run build
+```
+
+## Docker goal
+
+The long-term goal is that the Actor can run in Docker in **managed** mode without depending on:
+
+- a manually started local Chrome on `localhost:9222`
+- macOS-only screen recording infrastructure
+- hardcoded test URLs
+
+## Repository purpose in one sentence
+
+This repository is for building an Apify Actor that turns a Facebook post URL into one complete, traceable scrape result plus optional artifacts.
