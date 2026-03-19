@@ -1,58 +1,84 @@
-import { Actor } from 'apify';
-import { join } from 'node:path';
-import { chromium } from 'playwright';
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 
-import { extractAllComments } from './comments.js';
-import { switchToAllComments } from './comment-filter.js';
-import { startChromeWindowRecording, type ChromeSessionRecorder } from './recording.js';
-import { closeReactionModal, extractAllReactions } from './reactions.js';
+import { Actor, log } from 'apify';
+
+import { runWithExternalChrome, runWithManagedBrowser } from './external-chrome.js';
+import { parseInput } from './input.js';
+import { buildFailedDatasetItem, buildSuccessDatasetItem, type VideoArtifact } from './output-item.js';
+
+const persistVideoArtifact = async (jobId: string, localPath?: string): Promise<VideoArtifact> => {
+    if (!localPath) return { present: false };
+
+    const key = `recordings/${jobId}.mp4`;
+    const contentType: 'video/mp4' = 'video/mp4';
+
+    try {
+        const buffer = await readFile(localPath);
+        await Actor.setValue(key, buffer, { contentType });
+        return {
+            present: true,
+            key,
+            contentType,
+            localPath,
+        };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        log.warning(`Could not persist video artifact from ${localPath}: ${message}`);
+        return { present: false, localPath };
+    }
+};
 
 await Actor.init();
+Actor.on('aborting', async () => {
+    log.warning('Aborting signal received. Exiting gracefully...');
+    await delay(1000);
+    await Actor.exit();
+});
 
-const targetUrl = 'https://www.facebook.com/share/p/1Ahqyuv1ky/';
-const recordingOutputPath = join('storage', 'key_value_stores', 'default', 'chrome_session.mp4');
+const input = parseInput(await Actor.getInput());
+const jobId = randomUUID();
 
-console.log('🔌 Connecting to local Chrome...');
-
-let recorder: ChromeSessionRecorder | null = null;
+let processed = 0;
+let failed = 0;
 
 try {
-    const browser = await chromium.connectOverCDP('http://localhost:9222');
-    console.log('✅ Connected successfully!');
+    const scrapeResult = input.browserMode === 'cdp'
+        ? await runWithExternalChrome(input)
+        : await runWithManagedBrowser(input);
 
-    const context = browser.contexts()[0];
-    const page = await context.newPage();
-    await page.bringToFront();
-    await page.waitForTimeout(1500);
+    const videoArtifact = await persistVideoArtifact(jobId, scrapeResult.videoPath);
+    const datasetItem = buildSuccessDatasetItem(scrapeResult, jobId, input.browserMode, videoArtifact);
 
-    recorder = await startChromeWindowRecording(recordingOutputPath);
-    console.log(`🎥 Whole Chrome window recording started: ${recordingOutputPath}`);
+    await Actor.pushData(datasetItem);
+    processed = 1;
 
-    console.log(`🚀 Navigating to: ${targetUrl}`);
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(5000);
+    await Actor.setValue('RUN_SUMMARY', {
+        jobId,
+        status: datasetItem.scrape.status,
+        processed,
+        failed,
+        finishedAt: new Date().toISOString(),
+    });
 
-    const reactions = await extractAllReactions(page);
-    await Actor.setValue('final_reactions', reactions);
-    console.log('💾 Reactions saved to ./storage/key_value_stores/default/final_reactions.json');
-
-    await closeReactionModal(page);
-
-    await switchToAllComments(page);
-    const comments = await extractAllComments(page);
-    await Actor.setValue('comments', comments);
-    console.log('💾 Comments saved to ./storage/key_value_stores/default/comments.json');
+    log.info(`Crawler finished. Processed: ${processed}, failed: ${failed}.`);
 } catch (error) {
-    console.error('❌ An error occurred:', error);
-} finally {
-    if (recorder) {
-        try {
-            const savedPath = await recorder.stop();
-            console.log(`🎬 Chrome session recording saved to: ${savedPath}`);
-        } catch (error) {
-            console.error('❌ Failed to finalize the Chrome window recording:', error);
-        }
-    }
+    failed = 1;
+    const message = error instanceof Error ? error.message : String(error);
+    log.error(`Crawler failed: ${message}`);
+
+    const failedItem = buildFailedDatasetItem(input.url, jobId, input.browserMode, message);
+    await Actor.pushData(failedItem);
+
+    await Actor.setValue('RUN_SUMMARY', {
+        jobId,
+        status: 'FAILED',
+        processed,
+        failed,
+        error: message,
+        finishedAt: new Date().toISOString(),
+    });
 }
 
 await Actor.exit();

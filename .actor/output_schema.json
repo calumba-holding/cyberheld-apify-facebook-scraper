@@ -1,12 +1,17 @@
 {
     "$schema": "https://apify.com/schemas/v1/output.ide.json",
     "actorOutputSchemaVersion": 1,
-    "title": "Output schema",
+    "title": "Facebook Scraper Output",
     "properties": {
-        "results": {
+        "dataset": {
             "type": "string",
-            "title": "Results",
+            "title": "Structured dataset items",
             "template": "{{links.apiDefaultDatasetUrl}}/items"
+        },
+        "artifacts": {
+            "type": "string",
+            "title": "Artifacts key-value store",
+            "template": "{{links.apiDefaultKeyValueStoreUrl}}/keys"
         }
     }
 }

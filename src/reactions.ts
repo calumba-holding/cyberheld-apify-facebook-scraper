@@ -1,11 +1,10 @@
+import { log } from 'apify';
 import type { Locator, Page } from 'playwright';
-
 export type ReactionUser = {
     name: string;
     profile_url: string;
     reaction: 'All';
 };
-
 const REACTION_COUNTER_SELECTOR = '[aria-label*="reacted to this"], [aria-label*="reactions"]';
 const PROFILE_PICTURE_SELECTOR = 'a[aria-label^="Profile picture of"]';
 
@@ -76,103 +75,120 @@ const findAllTab = async (modal: Locator): Promise<Locator> => {
 };
 
 export const extractAllReactions = async (page: Page): Promise<ReactionUser[]> => {
-    console.log('\n👍 Hunting for the main post reaction counter...');
+    log.info('Hunting for the main post reaction counter...');
+    let modal: Locator | null = null;
 
-    const reactionCounter = page.locator(REACTION_COUNTER_SELECTOR).first();
-    if (!(await reactionCounter.isVisible())) {
-        console.log('⚠️ Could not find the reaction counter.');
-        return [];
-    }
+    try {
+        const reactionCounter = page.locator(REACTION_COUNTER_SELECTOR).first();
+        if (!(await reactionCounter.isVisible())) {
+            log.warning('Could not find the reaction counter.');
+            return [];
+        }
 
-    console.log('👆 Found it! Clicking to open the modal...');
-    await reactionCounter.click({ force: true });
-
-    console.log('⏳ Waiting specifically for the Reaction Modal...');
-    await page.waitForSelector('div[role="dialog"]:visible', { timeout: 10000 });
-    const modal = page.locator('div[role="dialog"]:visible').last();
-    await modal.waitFor({ state: 'visible', timeout: 10000 });
-    await page.waitForTimeout(1500);
-
-    const tabLabels = await modal.locator('[role="tab"], [role="button"]').evaluateAll((tabs) => {
-        return tabs
-            .map((tab) => {
-                const role = tab.getAttribute('role') || '';
-                const ariaLabel = tab.getAttribute('aria-label') || '';
-                const text = tab.textContent?.trim() || '';
-                return `${role} | ${ariaLabel || text}`;
-            })
-            .filter(Boolean);
-    });
-    console.log('🔎 Tabs in modal:', tabLabels);
-
-    console.log('🎯 Locating the "All" tab inside the modal...');
-    const allTab = await findAllTab(modal);
-
-    if (await allTab.count()) {
-        console.log('👆 Clicking "All" tab now...');
-        await allTab.click({ force: true });
-        await page.waitForTimeout(3000);
-        console.log('✅ "All" tab selected.');
-    } else {
-        console.log('⚠️ Could not find "All" tab. It might already be selected.');
-    }
-
-    console.log('📜 Scrolling and scraping users from "All"...');
-    await modal.locator(PROFILE_PICTURE_SELECTOR).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {
-        console.log('⚠️ No visible profile links found yet in the All tab.');
-    });
-
-    const reactions: ReactionUser[] = [];
-    const seenProfiles = new Set<string>();
-    let previousCount = 0;
-    let retries = 0;
-
-    while (retries < 3) {
-        const currentBatch = await extractVisibleReactionUsers(modal);
-
-        for (const user of currentBatch) {
-            if (!seenProfiles.has(user.profile_url)) {
-                seenProfiles.add(user.profile_url);
-                reactions.push(user);
+        log.info('Found reaction counter. Opening modal...');
+        let modalOpened = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            await reactionCounter.scrollIntoViewIfNeeded().catch(() => undefined);
+            await page.waitForTimeout(250);
+            await reactionCounter.click({ force: true, delay: 80 }).catch(() => undefined);
+            try {
+                await page.waitForSelector('div[role="dialog"]:visible', { timeout: 5000 });
+                modalOpened = true;
+                break;
+            } catch {
+                await page.waitForTimeout(500);
             }
         }
-
-        if (seenProfiles.size === previousCount) {
-            retries += 1;
-        } else {
-            retries = 0;
-            previousCount = seenProfiles.size;
-            console.log(`   📊 Extracted ${seenProfiles.size} total unique users so far...`);
+        if (!modalOpened) {
+            log.warning('Could not open the main reactions modal.');
+            return [];
         }
 
-        if (retries >= 3) break;
-
-        const didScroll = await scrollReactionList(modal, page);
-        if (!didScroll) {
-            retries += 1;
-            console.log('⚠️ Could not find a scrollable container in the reactions modal.');
-        }
-
+        modal = page.locator('div[role="dialog"]:visible').last();
+        await modal.waitFor({ state: 'visible', timeout: 10000 });
         await page.waitForTimeout(1500);
-    }
 
-    console.log(`\n🎉 Done! Extracted ${reactions.length} users.`);
-    return reactions;
+        log.info('Locating the "All" tab inside the reaction modal...');
+        const allTab = await findAllTab(modal);
+
+        if (await allTab.count()) {
+            log.info('Clicking "All" tab...');
+            await allTab.click({ force: true });
+            await page.waitForTimeout(3000);
+            log.info('"All" tab selected.');
+        } else {
+            log.warning('Could not find "All" tab. It may already be selected.');
+        }
+
+        log.info('Scrolling and scraping users from "All"...');
+        await modal.locator(PROFILE_PICTURE_SELECTOR).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {
+            log.warning('No visible profile links found yet in the All tab.');
+        });
+
+        const reactions: ReactionUser[] = [];
+        const seenProfiles = new Set<string>();
+        let previousCount = 0;
+        let retries = 0;
+
+        while (retries < 3) {
+            const currentBatch = await extractVisibleReactionUsers(modal);
+
+            for (const user of currentBatch) {
+                if (!seenProfiles.has(user.profile_url)) {
+                    seenProfiles.add(user.profile_url);
+                    reactions.push(user);
+                }
+            }
+
+            if (seenProfiles.size === previousCount) {
+                retries += 1;
+            } else {
+                retries = 0;
+                previousCount = seenProfiles.size;
+                log.info(`Extracted ${seenProfiles.size} total unique users so far.`);
+            }
+
+            if (retries >= 3) break;
+
+            const didScroll = await scrollReactionList(modal, page);
+            if (!didScroll) {
+                retries += 1;
+                log.warning('Could not find a scrollable container in the reactions modal.');
+            }
+
+            await page.waitForTimeout(1500);
+        }
+
+        log.info(`Done. Extracted ${reactions.length} users.`);
+        return reactions;
+    } finally {
+        if (modal) await closeReactionModal(page, modal);
+    }
 };
 
-export const closeReactionModal = async (page: Page): Promise<void> => {
-    console.log('\n❌ Closing the reactions modal...');
+export const closeReactionModal = async (page: Page, modal?: Locator): Promise<void> => {
+    log.info('Closing reactions modal...');
+    const resolveActiveDialog = async (): Promise<Locator | null> => {
+        if (modal && await modal.isVisible().catch(() => false)) return modal;
+        const visibleDialogs = page.locator('div[role="dialog"]:visible');
+        if (!(await visibleDialogs.count().catch(() => 0))) return null;
+        return visibleDialogs.last();
+    };
 
-    const modal = page.locator('div[role="dialog"]:visible').last();
-    const closeBtn = modal.locator('[aria-label="Close"][role="button"]').first();
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const activeDialog = await resolveActiveDialog();
+        if (!activeDialog) return;
 
-    if (await closeBtn.isVisible().catch(() => false)) {
-        await closeBtn.click({ force: true });
-        await page.waitForTimeout(2000);
-        return;
+        const closeButton = activeDialog
+            .locator('[aria-label="Close"][role="button"], [aria-label="Schließen"][role="button"]')
+            .first();
+
+        if (!(await closeButton.isVisible().catch(() => false))) break;
+        await closeButton.click({ force: true }).catch(() => undefined);
+
+        await page.waitForTimeout(700);
+        if (!(await activeDialog.isVisible().catch(() => false))) return;
     }
 
-    console.log('⚠️ Close button not found, falling back to Escape key.');
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(2000);
+    log.warning('Could not confirm reaction modal close via close button.');
 };

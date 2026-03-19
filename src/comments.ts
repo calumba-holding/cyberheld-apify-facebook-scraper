@@ -1,12 +1,39 @@
 import { log } from 'apify';
-import type { Page } from 'playwright';
+import type { Locator, Page } from 'playwright';
 
 import { deduplicateComments, extractCommentRecords } from './comment-extraction.js';
-import { switchToAllComments } from './comment-filter.js';
 import { attachCommentReactions } from './comment-reactions.js';
 import type { ScrapedComment } from './comment-models.js';
 
 const COMMENT_SELECTOR = 'div[role="article"][aria-label^="Comment by"]';
+const COMMENTS_HEADING_SELECTOR = 'h2, h3';
+
+const closeVisibleDialogIfAny = async (page: Page): Promise<boolean> => {
+    const dialogCount = await page.locator('div[role="dialog"]:visible').count().catch(() => 0);
+    if (!dialogCount) return false;
+
+    await page.keyboard.press('Escape').catch(() => undefined);
+    await page.waitForTimeout(700);
+    return true;
+};
+
+const ensureCommentsAreVisible = async (page: Page, comments: Locator): Promise<void> => {
+    if (await comments.count()) return;
+    await closeVisibleDialogIfAny(page);
+
+    const heading = page.locator(COMMENTS_HEADING_SELECTOR).filter({ hasText: 'Comments' }).first();
+    if (await heading.isVisible().catch(() => false)) {
+        await heading.scrollIntoViewIfNeeded().catch(() => undefined);
+        await page.waitForTimeout(1000);
+        if (await comments.count()) return;
+    }
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+        await page.mouse.wheel(0, 1400);
+        await page.waitForTimeout(700);
+        if (await comments.count()) return;
+    }
+};
 
 const clickCommentExpansionButtons = async (page: Page): Promise<boolean> => {
     const buttons = page.locator('[role="button"]');
@@ -34,6 +61,7 @@ const clickCommentExpansionButtons = async (page: Page): Promise<boolean> => {
 export const extractAllComments = async (page: Page): Promise<ScrapedComment[]> => {
     log.info('📜 Scrolling the comments without leaving the current post...');
     const comments = page.locator(COMMENT_SELECTOR);
+    await ensureCommentsAreVisible(page, comments);
     await comments.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => undefined);
 
     let previousCount = 0;
