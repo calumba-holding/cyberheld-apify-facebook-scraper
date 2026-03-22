@@ -1,253 +1,151 @@
-# Facebook Post Scraper Actor
+# scrape
 
-This repository is intended to become an **Apify Actor** for scraping a single Facebook post URL and returning a **structured result** containing:
+Local CLI scraper with a plugin-oriented target architecture.
 
-- the post itself
-- all discovered comments
-- all discovered reactions on the post
-- all discovered reactions on the comments
-- an optional video recording of the scrape session
+Current plugin support:
+- `facebook`
+  - scraper: `post-engagement`
 
-## Status
+The CLI reuses a persistent Chrome profile per target, always prints JSON to stdout, and can optionally record a screen video while scraping.
 
-**Work in progress.**
+## Project structure
 
-The current codebase started from a generic Apify Playwright template and is still being aligned with the Actor contract described below. This README describes the **intended product behavior** and the architecture the project should converge to.
-
-## Goal
-
-Build a reusable Actor that:
-
-1. accepts a Facebook post URL as input
-2. scrapes the post, comments, and reactions
-3. returns one structured dataset item per input URL
-4. optionally stores a video artifact for the scrape run
-5. works both locally and, in managed mode, in Docker / on the Apify platform
-
-## Intended Input
-
-The Actor should accept a single input object like this:
-
-```json
-{
-  "url": "https://www.facebook.com/share/p/...",
-  "browserMode": "cdp",
-  "recordVideo": true
-}
+```text
+src/
+  cli/        CLI parsing, help text, and runtime orchestration
+  common/     shared runtime helpers and common types
+  facebook/   Facebook-specific plugin, extractors, and types
 ```
 
-### Input fields
+## Features
 
-- `url` **required**  
-  The Facebook post URL to scrape.
+- persistent per-target Chrome profiles
+- one-time manual login flow via CLI
+- scraping one or many target URLs
+- parallel scraping with `--concurrency`
+- strict JSON output to stdout
+- optional `--output-file`
+- optional screen capture via ffmpeg
+- strict linting with a pre-commit hook
 
-- `browserMode` optional  
-  One of:
-  - `cdp` — connect to an already running local Chrome session
-  - `managed` — launch Playwright inside the Actor
+## Requirements
 
-- `recordVideo` optional  
-  If enabled, the Actor records the session and stores the video as an artifact.
+- macOS
+- Google Chrome installed at `/Applications/Google Chrome.app`
+- Node.js `>= 20`
+- `ffmpeg` in `PATH` for `--screen-video`
 
-## Browser Modes
-
-### `cdp`
-Use this mode when scraping through a **real local Chrome session**.
-
-This is useful for:
-- authenticated scraping
-- stealthier local runs
-- development against an already logged-in browser profile
-
-### `managed`
-Use this mode when running as a portable Actor in:
-- Docker
-- CI
-- Apify platform
-
-In this mode, the Actor launches the browser itself using Playwright.
-
-## Intended Output Model
-
-For each input URL, the Actor should emit **exactly one dataset item**.
-
-### Dataset item
-
-```json
-{
-  "input": {
-    "url": "https://www.facebook.com/share/p/..."
-  },
-  "scrape": {
-    "jobId": "550e8400-e29b-41d4-a716-446655440000",
-    "status": "ok",
-    "scrapedAt": "2026-03-18T12:00:00.000Z",
-    "browserMode": "cdp",
-    "allCommentsLoaded": true,
-    "allPostReactionsLoaded": true,
-    "allCommentReactionsLoaded": true,
-    "warnings": []
-  },
-  "post": {
-    "id": "facebook-post-id",
-    "url": "https://www.facebook.com/share/p/...",
-    "author": {
-      "name": "Page or User Name",
-      "profileUrl": "https://facebook.com/..."
-    },
-    "text": "Post text",
-    "publishedAt": null,
-    "reactionSummary": {
-      "total": 123,
-      "byType": {
-        "like": 80,
-        "love": 20,
-        "care": 0,
-        "haha": 10,
-        "wow": 5,
-        "sad": 4,
-        "angry": 4
-      }
-    },
-    "reactions": [
-      {
-        "userName": "Max Mustermann",
-        "profileUrl": "https://facebook.com/...",
-        "type": "like"
-      }
-    ]
-  },
-  "comments": [
-    {
-      "id": "comment-1",
-      "parentCommentId": null,
-      "depth": 0,
-      "author": {
-        "name": "Erika Musterfrau",
-        "profileUrl": "https://facebook.com/..."
-      },
-      "text": "Comment text",
-      "publishedAt": null,
-      "reactionSummary": {
-        "total": 8,
-        "byType": {
-          "like": 7,
-          "love": 1
-        }
-      },
-      "reactions": [
-        {
-          "userName": "John Doe",
-          "profileUrl": "https://facebook.com/...",
-          "type": "like"
-        }
-      ]
-    }
-  ],
-  "artifacts": {
-    "video": {
-      "present": true,
-      "key": "recordings/550e8400-e29b-41d4-a716-446655440000.mp4",
-      "contentType": "video/mp4",
-      "localPath": "storage/key_value_stores/default/recordings/550e8400-e29b-41d4-a716-446655440000.mp4"
-    }
-  }
-}
-```
-
-## Storage Conventions
-
-The Actor should follow normal Apify storage conventions:
-
-### Default dataset
-Use the **default dataset** for the main structured scrape result.
-
-- one input URL → one dataset item
-- no binary data in dataset items
-
-### Default key-value store
-Use the **default key-value store** for artifacts such as video files.
-
-Recommended naming:
-
-- video key: `recordings/<jobId>.mp4`
-
-The `jobId` must be a UUID generated per scrape job and used consistently across outputs so dataset rows and artifacts can be joined reliably.
-
-## Intended Runtime Flow
-
-1. Read Actor input
-2. Generate a UUID `jobId`
-3. Resolve browser mode (`cdp` or `managed`)
-4. Open the target Facebook post URL
-5. Extract:
-   - post metadata
-   - post reactions
-   - all comments
-   - reactions for each comment
-6. Optionally record video
-7. Store video in KVS if enabled
-8. Emit one final dataset item containing:
-   - input metadata
-   - scrape metadata
-   - post data
-   - comment data
-   - artifact references
-
-## Development Principles
-
-This project should avoid these anti-patterns:
-
-- hardcoded target URLs in runtime code
-- local-only assumptions without a configurable runtime mode
-- macOS-only recording as the primary recording strategy
-- splitting the main result across unrelated KVS entries
-- undocumented output formats
-
-## Planned Actor Surface
-
-### Input schema
-`.actor/input_schema.json` should match the runtime contract:
-- `url`
-- `browserMode`
-- `recordVideo`
-
-### Output schema
-`.actor/output_schema.json` should describe **where outputs are stored**:
-- default dataset for structured output
-- default key-value store for video artifacts
-
-### Dataset schema
-`.actor/dataset_schema.json` should describe the result shape shown in Apify Console.
-
-## Local development
-
-Install dependencies:
+## Install
 
 ```bash
 npm install
-```
-
-Run in development mode:
-
-```bash
-npm run start:dev
-```
-
-Build:
-
-```bash
 npm run build
+npm run hooks:install
 ```
 
-## Docker goal
+The last command configures Git to use `.githooks/pre-commit`, which runs `npm run lint` before every commit.
 
-The long-term goal is that the Actor can run in Docker in **managed** mode without depending on:
+## First run
 
-- a manually started local Chrome on `localhost:9222`
-- macOS-only screen recording infrastructure
-- hardcoded test URLs
+Log into Facebook once with the persistent scraper profile before scraping:
 
-## Repository purpose in one sentence
+```bash
+node dist/main.js profile login --target facebook
+```
 
-This repository is for building an Apify Actor that turns a Facebook post URL into one complete, traceable scrape result plus optional artifacts.
+## CLI overview
+
+```bash
+scrape --target <target> --scraper <scraper> --target-url <url> [--target-url <url> ...] [options]
+scrape profile login --target <target> [options]
+scrape profile path --target <target>
+```
+
+## Profile commands
+
+Open the persistent target profile and log in manually:
+
+```bash
+node dist/main.js profile login --target facebook
+```
+
+Show the resolved profile path:
+
+```bash
+node dist/main.js profile path --target facebook
+```
+
+Default profile root:
+
+```text
+~/.scrape/profiles/<target>
+```
+
+## Scrape one URL
+
+```bash
+node dist/main.js \
+  --target facebook \
+  --scraper post-engagement \
+  --target-url "https://www.facebook.com/..."
+```
+
+## Scrape multiple URLs in parallel
+
+```bash
+node dist/main.js \
+  --target facebook \
+  --scraper post-engagement \
+  --target-url "https://www.facebook.com/post-a" \
+  --target-url "https://www.facebook.com/post-b" \
+  --target-url "https://www.facebook.com/post-c" \
+  --concurrency 3
+```
+
+## Record screen video and save JSON
+
+```bash
+node dist/main.js \
+  --target facebook \
+  --scraper post-engagement \
+  --target-url "https://www.facebook.com/..." \
+  --screen-video \
+  --output-file ./out/facebook-post.json \
+  --verbose
+```
+
+## Output behavior
+
+- `stdout`: always final JSON
+- `stderr`: logs and errors
+- `--output-file <path>`: also writes the JSON to disk
+- screen video:
+  - saved next to the output JSON as `.mp4` when `--output-file` is set
+  - otherwise saved under a temp artifact directory
+
+## Facebook post-engagement output
+
+The Facebook plugin currently extracts:
+- post URL
+- post content
+- post reactions with per-user reaction type
+- comments and replies
+- UTC timestamps for visible comments/replies
+- per-comment / per-reply reactions when available
+
+## Linting
+
+```bash
+npm run lint
+npm run lint:fix
+```
+
+Rules include:
+- strict type-checked TypeScript linting
+- max `300` lines per file excluding comments and blank lines
+
+## Notes
+
+- The scraper uses a custom persistent Chrome profile, not the host system default Chrome profile.
+- Facebook extraction is scoped to the target post container to avoid drifting into adjacent posts.
+- When Facebook does not show a comments filter for small threads, the scraper treats the visible thread as already complete.
