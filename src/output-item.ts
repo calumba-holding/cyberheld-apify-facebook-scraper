@@ -6,7 +6,7 @@ import type { ReactionUser } from './reactions.js';
 export type VideoArtifact = {
     present: boolean;
     key?: string;
-    contentType?: 'video/mp4';
+    contentType?: 'video/mp4' | 'video/webm';
     localPath?: string;
 };
 

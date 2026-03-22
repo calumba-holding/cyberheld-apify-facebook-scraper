@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { extname } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { Actor, log } from 'apify';
@@ -11,8 +12,9 @@ import { buildFailedDatasetItem, buildSuccessDatasetItem, type VideoArtifact } f
 const persistVideoArtifact = async (jobId: string, localPath?: string): Promise<VideoArtifact> => {
     if (!localPath) return { present: false };
 
-    const key = `recordings/${jobId}.mp4`;
-    const contentType: 'video/mp4' = 'video/mp4';
+    const extension = extname(localPath).toLowerCase() === '.webm' ? '.webm' : '.mp4';
+    const key = `recordings-${jobId}${extension}`;
+    const contentType: VideoArtifact['contentType'] = extension === '.webm' ? 'video/webm' : 'video/mp4';
 
     try {
         const buffer = await readFile(localPath);
