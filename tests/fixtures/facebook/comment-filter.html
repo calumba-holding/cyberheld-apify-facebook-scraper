@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Comment filter fixture</title>
+  <style>
+    body { font-family: sans-serif; }
+    .spacer { height: 40px; }
+    [role="button"], [role="menuitemradio"] { display: inline-block; padding: 8px 12px; border: 1px solid #999; margin: 8px 0; }
+    #filter-menu[hidden] { display: none; }
+    #filter-menu { display: block; margin-top: 8px; }
+    [role="article"] { display: block; margin-top: 16px; padding: 12px; border: 1px solid #ccc; width: 420px; }
+    h2 { margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <div class="spacer"></div>
+  <h2>Comments</h2>
+  <button id="filter-button" role="button" aria-haspopup="menu">Most relevant</button>
+  <div id="filter-menu" hidden>
+    <button id="all-comments" role="menuitemradio">All comments</button>
+  </div>
+
+  <div role="article" aria-label="Comment by Ada 2h">
+    <a href="https://www.facebook.com/story.php?comment_id=comment-1"><span dir="auto">Ada</span></a>
+    <div dir="auto" style="text-align: start;">Visible comment</div>
+  </div>
+
+  <script>
+    const filterButton = document.getElementById('filter-button');
+    const menu = document.getElementById('filter-menu');
+    const allComments = document.getElementById('all-comments');
+
+    filterButton.addEventListener('click', () => {
+      menu.hidden = false;
+    });
+
+    allComments.addEventListener('click', () => {
+      filterButton.textContent = 'All comments';
+      menu.hidden = true;
+    });
+  </script>
+</body>
+</html>

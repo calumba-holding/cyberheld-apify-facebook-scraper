@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Reactions modal fixture</title>
+  <style>
+    body { font-family: sans-serif; }
+    [role="button"], [role="tab"] { display: inline-block; padding: 8px 12px; border: 1px solid #999; margin: 8px 4px 8px 0; }
+    [role="dialog"] { display: none; width: 520px; min-height: 240px; padding: 16px; border: 1px solid #333; }
+    [role="dialog"][data-open="true"] { display: block; }
+    .panel { display: none; }
+    .panel[data-active="true"] { display: block; }
+    .people { max-height: 120px; overflow-y: auto; }
+    a { display: block; margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <button id="reaction-trigger" role="button" aria-label="Like: 3 people">Like</button>
+
+  <div id="reaction-dialog" role="dialog" aria-label="Reactions dialog">
+    <button id="close-dialog" role="button" aria-label="Close">Close</button>
+    <button id="tab-like" role="tab" aria-selected="true" aria-label="Show 2 people reacted with Like">Like</button>
+    <button id="tab-love" role="tab" aria-selected="false" aria-label="Show 1 people reacted with Love">Love</button>
+
+    <div id="panel-like" class="panel" data-active="true">
+      <div class="people">
+        <a aria-label="Profile picture of Ada Lovelace" href="https://www.facebook.com/ada?__tn__=R">Ada</a>
+        <a aria-label="Profile picture of Grace Hopper" href="https://www.facebook.com/grace?__cft__[0]=abc">Grace</a>
+      </div>
+    </div>
+
+    <div id="panel-love" class="panel" data-active="false">
+      <div class="people">
+        <a aria-label="Profile picture of Linus Torvalds" href="https://www.facebook.com/linus">Linus</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const trigger = document.getElementById('reaction-trigger');
+    const dialog = document.getElementById('reaction-dialog');
+    const close = document.getElementById('close-dialog');
+    const tabLike = document.getElementById('tab-like');
+    const tabLove = document.getElementById('tab-love');
+    const panelLike = document.getElementById('panel-like');
+    const panelLove = document.getElementById('panel-love');
+
+    const activate = (reaction) => {
+      const isLike = reaction === 'like';
+      tabLike.setAttribute('aria-selected', String(isLike));
+      tabLove.setAttribute('aria-selected', String(!isLike));
+      panelLike.dataset.active = String(isLike);
+      panelLove.dataset.active = String(!isLike);
+    };
+
+    trigger.addEventListener('click', () => {
+      dialog.dataset.open = 'true';
+    });
+
+    close.addEventListener('click', () => {
+      dialog.dataset.open = 'false';
+    });
+
+    tabLike.addEventListener('click', () => activate('like'));
+    tabLove.addEventListener('click', () => activate('love'));
+  </script>
+</body>
+</html>

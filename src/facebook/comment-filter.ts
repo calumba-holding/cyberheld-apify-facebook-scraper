@@ -1,22 +1,23 @@
-import { log } from 'apify';
-import type { Page } from 'playwright';
+import { log } from '../common/logger.js';
+import type { Locator, Page } from 'playwright';
 
-type PointCandidate = { index: number; text: string; x: number; y: number };
-type PointTarget = { text: string; x: number; y: number };
+import { COMMENT_HEADING_LABELS, FILTER_LABELS, TARGET_FILTER_LABELS } from './constants.js';
+import { COMMENT_ARTICLE_SELECTOR, COMMENT_HEADING_SELECTOR, FILTER_BUTTON_SELECTOR } from './selectors.js';
 
-const COMMENT_ARTICLE_SELECTOR = 'div[role="article"][aria-label^="Comment by"]';
-const COMMENT_HEADING_SELECTOR = 'h1, h2, h3, [role="heading"]';
-const FILTER_BUTTON_SELECTOR = '[role="button"][aria-haspopup="menu"]';
+interface PointCandidate { index: number; text: string; x: number; y: number }
+interface PointTarget { text: string; x: number; y: number }
 
-const COMMENT_HEADING_LABELS = ['comments', 'kommentare'];
-const FILTER_LABELS = ['most relevant', 'top comments', 'all comments', 'relevanteste', 'alle kommentare'];
-const TARGET_FILTER_LABELS = ['all comments', 'alle kommentare'];
+export interface CommentFilterResult {
+    applied: boolean;
+    shouldReloadComments: boolean;
+    state: 'already_all' | 'switched' | 'not_available' | 'failed';
+}
 
 const normalizeText = (value: string | null | undefined): string => (value || '').replace(/\s+/g, ' ').trim().toLowerCase();
-const hasAnyLabel = (text: string, labels: string[]): boolean => labels.some((label) => text.includes(label));
+const hasAnyLabel = (text: string, labels: readonly string[]): boolean => labels.some((label) => text.includes(label));
 
-const locateFilterCandidate = async (page: Page): Promise<PointCandidate | null> => {
-    return page.evaluate(({ buttonSelector, commentSelector, headingSelector, filterLabels, headingLabels }) => {
+const locateFilterCandidate = async (scope: Locator): Promise<PointCandidate | null> => {
+    return scope.evaluate((root, { buttonSelector, commentSelector, headingSelector, filterLabels, headingLabels }) => {
         const normalize = (value: string | null | undefined): string => (value || '').replace(/\s+/g, ' ').trim().toLowerCase();
         const isVisible = (element: Element | null): element is HTMLElement => {
             if (!(element instanceof HTMLElement)) return false;
@@ -25,7 +26,7 @@ const locateFilterCandidate = async (page: Page): Promise<PointCandidate | null>
             return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
         };
 
-        const headingTop = Array.from(document.querySelectorAll(headingSelector))
+        const headingTop = Array.from(root.querySelectorAll(headingSelector))
             .filter((node) => isVisible(node))
             .map((node) => {
                 const element = node as HTMLElement;
@@ -35,7 +36,7 @@ const locateFilterCandidate = async (page: Page): Promise<PointCandidate | null>
             .filter((entry) => headingLabels.some((label) => entry.text.includes(label)))
             .sort((left, right) => left.top - right.top)[0]?.top ?? Number.POSITIVE_INFINITY;
 
-        const commentTop = Array.from(document.querySelectorAll(commentSelector))
+        const commentTop = Array.from(root.querySelectorAll(commentSelector))
             .filter((node) => isVisible(node))
             .map((node) => (node as HTMLElement).getBoundingClientRect().top)
             .sort((left, right) => left - right)[0] ?? Number.POSITIVE_INFINITY;
@@ -43,7 +44,7 @@ const locateFilterCandidate = async (page: Page): Promise<PointCandidate | null>
         const anchorTop = Number.isFinite(headingTop) ? headingTop : commentTop;
         if (!Number.isFinite(anchorTop)) return null;
 
-        const candidates = Array.from(document.querySelectorAll(buttonSelector))
+        const candidates = Array.from(root.querySelectorAll(buttonSelector))
             .map((node, index) => ({ node, index }))
             .filter((entry) => isVisible(entry.node))
             .map((entry) => {
@@ -128,23 +129,25 @@ const clickPoint = async (page: Page, point: { x: number; y: number }): Promise<
     await page.mouse.click(point.x, point.y, { delay: 120 }).catch(() => undefined);
 };
 
-const isAllCommentsSelected = async (page: Page): Promise<boolean> => {
-    const candidate = await locateFilterCandidate(page);
+const isAllCommentsSelected = async (scope: Locator): Promise<boolean> => {
+    const candidate = await locateFilterCandidate(scope);
     if (!candidate) return false;
     return hasAnyLabel(normalizeText(candidate.text), TARGET_FILTER_LABELS);
 };
 
-export const switchToAllComments = async (page: Page): Promise<boolean> => {
-    log.info('🔄 Attempting to set filter to "All comments"...');
+export const switchToAllComments = async (page: Page, scope: Locator = page.locator('body')): Promise<CommentFilterResult> => {
+    log.info('Attempting to set filter to "All comments"...');
 
-    if (await isAllCommentsSelected(page)) {
-        log.info('✅ Filter is already set to "All comments"!');
-        return true;
+    if (await isAllCommentsSelected(scope)) {
+        log.info('Filter is already set to "All comments".');
+        return { applied: true, shouldReloadComments: false, state: 'already_all' };
     }
+
+    let sawFilterCandidate = false;
 
     for (let attempt = 0; attempt < 6; attempt++) {
         log.debug(`All-comments switch attempt ${attempt + 1}/6`);
-        const candidate = await locateFilterCandidate(page);
+        const candidate = await locateFilterCandidate(scope);
         if (!candidate) {
             log.debug('Could not locate comments filter button in viewport yet.');
             await page.mouse.wheel(0, -900).catch(() => undefined);
@@ -152,9 +155,11 @@ export const switchToAllComments = async (page: Page): Promise<boolean> => {
             continue;
         }
 
+        sawFilterCandidate = true;
+
         log.debug(`Filter candidate found: "${candidate.text}" at (${candidate.x}, ${candidate.y})`);
 
-        const filterButtons = page.locator(FILTER_BUTTON_SELECTOR);
+        const filterButtons = scope.locator(FILTER_BUTTON_SELECTOR);
         const button = filterButtons.nth(candidate.index);
         await button.scrollIntoViewIfNeeded().catch(() => undefined);
         await button.click({ force: true, delay: 120 }).catch(() => undefined);
@@ -166,9 +171,9 @@ export const switchToAllComments = async (page: Page): Promise<boolean> => {
             log.debug(`All-comments menu option found: "${option.text}" at (${option.x}, ${option.y})`);
             await clickPoint(page, option);
             await page.waitForTimeout(900);
-            if (await isAllCommentsSelected(page)) {
-                log.info('✅ Filter set to "All comments"!');
-                return true;
+            if (await isAllCommentsSelected(scope)) {
+                log.info('Filter set to "All comments".');
+                return { applied: true, shouldReloadComments: true, state: 'switched' };
             }
         }
 
@@ -176,6 +181,14 @@ export const switchToAllComments = async (page: Page): Promise<boolean> => {
         await page.waitForTimeout(250);
     }
 
-    log.warning('⚠️ Failed to switch the filter to "All comments".');
-    return false;
+    if (!sawFilterCandidate) {
+        const visibleCommentCount = await scope.locator(COMMENT_ARTICLE_SELECTOR).count().catch(() => 0);
+        if (visibleCommentCount > 0) {
+            log.info('No comments filter is shown for this post. Treating visible comments as already complete.');
+            return { applied: true, shouldReloadComments: false, state: 'not_available' };
+        }
+    }
+
+    log.warning('Failed to switch the filter to "All comments".');
+    return { applied: false, shouldReloadComments: false, state: 'failed' };
 };

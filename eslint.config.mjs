@@ -1,30 +1,48 @@
 import prettier from 'eslint-config-prettier';
-
-import apify from '@apify/eslint-config/ts.js';
 import globals from 'globals';
-import tsEslint from 'typescript-eslint';
+import tseslint from 'typescript-eslint';
 
-// eslint-disable-next-line import/no-default-export
-export default [
-    { ignores: ['**/dist', 'eslint.config.mjs'] },
-    ...apify,
-    prettier,
+export default tseslint.config(
     {
-        languageOptions: {
-            parser: tsEslint.parser,
-            parserOptions: {
-                project: 'tsconfig.json',
-            },
-            globals: {
-                ...globals.node,
-                ...globals.jest,
-            },
-        },
-        plugins: {
-            '@typescript-eslint': tsEslint.plugin,
-        },
-        rules: {
-            'no-console': 0,
+        ignores: ['dist', 'node_modules', 'eslint.config.mjs'],
+        linterOptions: {
+            reportUnusedDisableDirectives: 'error',
         },
     },
-];
+    ...tseslint.configs.recommendedTypeChecked,
+    ...tseslint.configs.strictTypeChecked,
+    ...tseslint.configs.stylisticTypeChecked,
+    {
+        files: ['src/**/*.ts'],
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
+            parserOptions: {
+                projectService: true,
+                tsconfigRootDir: import.meta.dirname,
+            },
+        },
+        rules: {
+            'no-console': 'off',
+            'max-lines': ['error', {
+                max: 300,
+                skipBlankLines: true,
+                skipComments: true,
+            }],
+            '@typescript-eslint/array-type': 'off',
+            '@typescript-eslint/consistent-type-definitions': 'off',
+            '@typescript-eslint/no-confusing-void-expression': 'off',
+            '@typescript-eslint/no-unnecessary-condition': 'off',
+            '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+            '@typescript-eslint/prefer-nullish-coalescing': 'off',
+            '@typescript-eslint/prefer-regexp-exec': 'off',
+            '@typescript-eslint/require-await': 'off',
+            '@typescript-eslint/restrict-plus-operands': 'off',
+            '@typescript-eslint/restrict-template-expressions': ['error', {
+                allowNumber: true,
+            }],
+        },
+    },
+    prettier,
+);

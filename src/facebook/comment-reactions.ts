@@ -1,9 +1,10 @@
-import { log } from 'apify';
+import { log } from '../common/logger.js';
 import type { Locator, Page } from 'playwright';
 
 import { extractCommentRecord } from './comment-extraction.js';
 import { closeCommentReactionModal, findReactionButton, openCommentReactionModal } from './comment-reaction-modal.js';
-import { buildCommentKey, type CommentReactionBreakdown, type CommentReactionDetails, type CommentReactionUser, type ScrapedComment } from './comment-models.js';
+import { normalizeProfileUrl, scrollReactionModal } from './reaction-helpers.js';
+import { buildCommentKey, type CommentReactionBreakdown, type CommentReactionDetails, type CommentReactionUser, type ScrapedComment } from './types.js';
 
 const PROFILE_PICTURE_LINK = 'a[aria-label^="Profile picture of"]';
 
@@ -18,38 +19,6 @@ const parseReactionTab = (ariaLabel: string): CommentReactionBreakdown | null =>
     const reaction = ariaLabel.slice(markerIndex + marker.length).trim();
     if (!Number.isFinite(count) || !reaction) return null;
     return { reaction, count };
-};
-
-const normalizeProfileUrl = (rawUrl: string): string => {
-    try {
-        const url = new URL(rawUrl);
-        url.searchParams.delete('__tn__');
-        url.searchParams.delete('__cft__');
-        return url.toString();
-    } catch {
-        return rawUrl;
-    }
-};
-
-const scrollReactionModal = async (modal: Locator, page: Page): Promise<boolean> => {
-    const scrolled = await modal.evaluate((dialog) => {
-        const containers = Array.from(dialog.querySelectorAll<HTMLElement>('div'))
-            .filter((node) => node.scrollHeight > node.clientHeight + 20)
-            .sort((left, right) => (right.scrollHeight - right.clientHeight) - (left.scrollHeight - left.clientHeight));
-        const target = containers[0];
-        if (!target) return false;
-        const previousTop = target.scrollTop;
-        target.scrollTop = previousTop + Math.max(target.clientHeight * 0.8, 300);
-        return target.scrollTop > previousTop;
-    });
-
-    if (scrolled) return true;
-
-    const box = await modal.boundingBox();
-    if (!box) return false;
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.wheel(0, 1200);
-    return true;
 };
 
 const collectReactionTabs = async (modal: Locator): Promise<CommentReactionBreakdown[]> => {

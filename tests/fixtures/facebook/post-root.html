@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Post root fixture</title>
+  <style>
+    body { font-family: sans-serif; }
+    [role="dialog"] { display: block; width: 420px; min-height: 180px; margin: 24px 0; padding: 16px; border: 1px solid #ccc; }
+    [data-ad-preview="message"] { display: block; margin: 12px 0; min-height: 24px; }
+    [role="button"] { display: inline-block; padding: 8px 12px; margin-top: 8px; border: 1px solid #999; }
+    [role="article"] { display: block; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div role="dialog" aria-label="Unrelated post dialog">
+    <a href="https://www.facebook.com/example/posts/111111111111111/?ref=share">Permalink</a>
+    <div data-ad-preview="message">This is a different post that should not be selected for the target lookup.</div>
+    <div role="button" aria-label="Like: 5 people">Like</div>
+  </div>
+
+  <div role="dialog" aria-label="Target post dialog">
+    <a href="https://www.facebook.com/example/posts/222222222222222/?ref=share">Permalink</a>
+    <div data-ad-preview="message">Target post body with enough text to pass the minimum-length threshold and be selected.</div>
+    <div role="button" aria-label="Like: 12 people">Like</div>
+    <div role="article" aria-label="Comment by Ada 2h">Comment marker</div>
+  </div>
+</body>
+</html>

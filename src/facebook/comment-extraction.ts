@@ -1,6 +1,6 @@
 import type { Locator } from 'playwright';
 
-import { buildCommentKey, type ScrapedComment } from './comment-models.js';
+import { buildCommentKey, type ScrapedComment } from './types.js';
 
 const cleanContent = (value: string): string => value.replace(/\s+/g, ' ').trim();
 
@@ -37,6 +37,9 @@ export const extractCommentRecord = async (comment: Locator): Promise<ScrapedCom
             const ariaLabel = article.getAttribute('aria-label') || '';
             if (ariaLabel.startsWith(`Comment by ${user} `)) {
                 timestamp = ariaLabel.slice(`Comment by ${user} `.length).trim();
+            } else {
+                const replyMatch = ariaLabel.match(/^Reply by .*? (\d+\s+\w+\s+ago|\d+\w+)$/i);
+                if (replyMatch) timestamp = replyMatch[1].trim();
             }
         }
 

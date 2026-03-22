@@ -1,40 +1,43 @@
 {
-	"name": "facebook-scraper",
-	"version": "0.0.1",
-	"type": "module",
-	"description": "This is an example of an Apify Actor.",
-	"engines": {
-		"node": ">=18.0.0"
-	},
-	"dependencies": {
-		"apify": "^3.7.0",
-		"@crawlee/playwright": "^3.15.3",
-		"playwright": "1.58.2"
-	},
-	"devDependencies": {
-		"@apify/eslint-config": "^1.0.0",
-		"@apify/tsconfig": "^0.1.1",
-		"@types/node": "^24.0.0",
-		"eslint": "^9.29.0",
-		"eslint-config-prettier": "^10.1.5",
-		"globals": "^17.0.0",
-		"prettier": "^3.5.3",
-		"tsx": "^4.20.3",
-		"typescript": "^5.9.3",
-		"typescript-eslint": "^8.34.1"
-	},
-	"scripts": {
-		"start": "npm run start:dev",
-		"start:prod": "node dist/main.js",
-		"start:dev": "tsx src/main.ts",
-		"build": "tsc",
-		"lint": "eslint",
-		"lint:fix": "eslint --fix",
-		"format": "prettier --write .",
-		"format:check": "prettier --check .",
-		"test": "echo \"Error: oops, the Actor has no tests yet, sad!\" && exit 1",
-		"postinstall": "npx crawlee install-playwright-browsers"
-	},
-	"author": "It's not you it's me",
-	"license": "ISC"
+  "name": "cyberheld-scraper-cli",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "CLI scraper for social targets using the host's logged-in Chrome profile.",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bin": {
+    "scrape": "dist/main.js"
+  },
+  "dependencies": {
+    "playwright": "1.58.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^24.0.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "eslint": "^9.29.0",
+    "eslint-config-prettier": "^10.1.5",
+    "globals": "^17.0.0",
+    "prettier": "^3.5.3",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.34.1",
+    "vitest": "^3.2.4"
+  },
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "build": "tsc",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run && playwright test",
+    "test:unit": "vitest run",
+    "test:browser": "playwright test",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "hooks:install": "git config core.hooksPath .githooks"
+  },
+  "license": "ISC"
 }

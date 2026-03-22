@@ -1,0 +1,119 @@
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { parseCliArgs } from '../../src/cli/parse.js';
+
+const ENV_KEYS = [
+    'SCRAPE_CHROME_EXECUTABLE',
+    'SCRAPE_PROFILE_ROOT_DIR',
+    'SCRAPE_WAIT_AFTER_NAVIGATION_MS',
+    'SCRAPE_REQUEST_TIMEOUT_SECS',
+    'SCRAPE_SCREEN_VIDEO',
+    'SCRAPE_CONCURRENCY',
+    'SCRAPE_ARTIFACT_ROOT_DIR',
+] as const;
+
+const originalEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
+
+afterEach(() => {
+    for (const key of ENV_KEYS) {
+        const value = originalEnv[key];
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+    }
+});
+
+describe('parseCliArgs', () => {
+    it('returns run options when required scrape flags are provided', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.target).toBe('facebook');
+            expect(parsed.options.scraper).toBe('post-engagement');
+            expect(parsed.options.targetUrls).toEqual(['https://www.facebook.com/example/posts/123']);
+            expect(parsed.options.concurrency).toBe(1);
+            expect(parsed.options.screenVideo).toBe(false);
+        }
+    });
+
+    it('returns profile-login options when profile login command is requested', () => {
+        process.env.SCRAPE_CHROME_EXECUTABLE = '/Applications/Test Chrome';
+        process.env.SCRAPE_PROFILE_ROOT_DIR = '/tmp/scrape-profiles';
+
+        const parsed = parseCliArgs(['profile', 'login', '--target', 'facebook']);
+
+        expect(parsed.kind).toBe('profile-login');
+        if (parsed.kind === 'profile-login') {
+            expect(parsed.options.target).toBe('facebook');
+            expect(parsed.options.chromeExecutable).toBe('/Applications/Test Chrome');
+            expect(parsed.options.profileRootDir).toBe('/tmp/scrape-profiles');
+            expect(parsed.options.verbose).toBe(false);
+        }
+    });
+
+    it('returns run options from environment defaults when optional flags are omitted', () => {
+        process.env.SCRAPE_CONCURRENCY = '3';
+        process.env.SCRAPE_SCREEN_VIDEO = 'true';
+        process.env.SCRAPE_WAIT_AFTER_NAVIGATION_MS = '1500';
+        process.env.SCRAPE_REQUEST_TIMEOUT_SECS = '600';
+        process.env.SCRAPE_ARTIFACT_ROOT_DIR = '/tmp/artifacts';
+
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.concurrency).toBe(3);
+            expect(parsed.options.screenVideo).toBe(true);
+            expect(parsed.options.waitAfterNavigationMs).toBe(1500);
+            expect(parsed.options.requestTimeoutSecs).toBe(600);
+            expect(parsed.options.artifactRootDir).toBe('/tmp/artifacts');
+        }
+    });
+
+    it('throws an error when target-url is missing for a scrape run', () => {
+        expect(() => parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+        ])).toThrowError('Missing required flag: --target-url');
+    });
+
+    it('throws an error when concurrency is outside the supported range', () => {
+        expect(() => parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+            '--concurrency',
+            '0',
+        ])).toThrowError('concurrency must be an integer between 1 and 16.');
+    });
+
+    it('throws an error when target is unsupported', () => {
+        expect(() => parseCliArgs([
+            '--target',
+            'instagram',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.instagram.com/p/abc',
+        ])).toThrowError('--target must be one of: facebook');
+    });
+});
