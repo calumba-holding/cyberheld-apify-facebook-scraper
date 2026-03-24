@@ -15,6 +15,7 @@ export interface ProfileLoginOptions {
 export interface LaunchBrowserOptions {
     chromeExecutable: string;
     profileRootDir: string;
+    recordVideoDir?: string;
 }
 
 export interface BaseScrapeResult {

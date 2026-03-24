@@ -12,7 +12,6 @@ export interface RunCliOptions {
     profileRootDir: string;
     waitAfterNavigationMs: number;
     requestTimeoutSecs: number;
-    screenIndex?: number;
     verbose: boolean;
     artifactRootDir: string;
 }

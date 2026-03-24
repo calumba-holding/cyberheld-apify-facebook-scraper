@@ -21,7 +21,7 @@ Required for scraping:
 
 Options:
   --concurrency <n>          Number of tabs to scrape in parallel (default: 1)
-  --screen-video             Record a progress video of the host screen
+  --screen-video             Record Playwright browser video for the scrape
   --no-screen-video          Disable screen recording
   --output-file <path>       Also write the final JSON to a file
   --chrome-executable <path> Chrome executable path
@@ -29,7 +29,6 @@ Options:
   --wait-after-navigation-ms <ms>
                              Extra wait after navigation (default: 5000)
   --request-timeout-secs <s> Navigation timeout (default: 240)
-  --screen-index <n>         ffmpeg AVFoundation screen index for video capture
   --verbose                  Print debug logs to stderr
   -h, --help                 Show help
   --version                  Show version

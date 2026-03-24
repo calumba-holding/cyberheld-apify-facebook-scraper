@@ -44,11 +44,9 @@ const resolveFacebookPostUrl = async (url: string): Promise<string> => {
 };
 
 const closeExtraBlankPages = async (context: BrowserContext): Promise<void> => {
-    const pages = context.pages();
-    if (pages.length <= 1) return;
-
-    await Promise.all(pages.slice(1).map(async (page) => {
-        if (page.url() === 'about:blank') await page.close().catch(() => undefined);
+    const blankPages = context.pages().filter((page) => page.url() === 'about:blank');
+    await Promise.all(blankPages.map(async (page) => {
+        await page.close().catch(() => undefined);
     }));
 };
 
@@ -101,12 +99,17 @@ const scrapePostEngagement = async (
 const launchPersistentBrowser = async (options: LaunchBrowserOptions): Promise<BrowserContext> => {
     const profileDir = getProfileDir(options.profileRootDir);
     await mkdir(profileDir, { recursive: true });
+    const recordingEnabled = Boolean(options.recordVideoDir);
 
     log.info(`Launching persistent Chrome profile at ${profileDir}`);
     const context = await chromium.launchPersistentContext(profileDir, {
         executablePath: options.chromeExecutable,
         headless: false,
-        viewport: null,
+        viewport: recordingEnabled ? { width: 1280, height: 720 } : null,
+        args: recordingEnabled ? ['--window-size=1280,720', '--disable-gpu'] : undefined,
+        recordVideo: options.recordVideoDir
+            ? { dir: options.recordVideoDir, size: { width: 1280, height: 720 } }
+            : undefined,
     });
 
     await closeExtraBlankPages(context);
@@ -131,6 +134,14 @@ const runScrape = async (
     }
 
     const page = await context.newPage();
+    const pageVideo = page.video();
+    let pageClosed = false;
+    const closePage = async (): Promise<void> => {
+        if (pageClosed) return;
+        pageClosed = true;
+        await page.close().catch(() => undefined);
+    };
+
     try {
         const resolvedPostUrl = await resolveFacebookPostUrl(targetUrl);
         if (resolvedPostUrl !== targetUrl) log.info(`Resolved shared URL to: ${resolvedPostUrl}`);
@@ -140,9 +151,13 @@ const runScrape = async (
             timeout: options.requestTimeoutSecs * 1000,
         });
 
-        return await scrapePostEngagement(page, targetUrl, resolvedPostUrl, options.waitAfterNavigationMs);
-    } finally {
-        await page.close().catch(() => undefined);
+        const scrapeResult = await scrapePostEngagement(page, targetUrl, resolvedPostUrl, options.waitAfterNavigationMs);
+        await closePage();
+        const videoPath = pageVideo ? await pageVideo.path().catch(() => undefined) : undefined;
+        return { ...scrapeResult, videoPath };
+    } catch (error) {
+        await closePage();
+        throw error;
     }
 };
 

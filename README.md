@@ -6,7 +6,7 @@ Current plugin support:
 - `facebook`
   - scraper: `post-engagement`
 
-The CLI reuses a persistent Chrome profile per target, always prints JSON to stdout, and can optionally record a screen video while scraping.
+The CLI reuses a persistent Chrome profile per target, always prints JSON to stdout, and can optionally record browser video via Playwright while scraping.
 
 ## Project structure
 
@@ -25,7 +25,7 @@ src/
 - parallel scraping with `--concurrency`
 - strict JSON output to stdout
 - optional `--output-file`
-- optional screen capture via ffmpeg
+- optional browser-only video capture
 - strict linting with a pre-commit hook
 
 ## Requirements
@@ -33,7 +33,6 @@ src/
 - macOS
 - Google Chrome installed at `/Applications/Google Chrome.app`
 - Node.js `>= 20`
-- `ffmpeg` in `PATH` for `--screen-video`
 
 ## Install
 
@@ -102,7 +101,7 @@ node dist/main.js \
   --concurrency 3
 ```
 
-## Record screen video and save JSON
+## Record browser video and save JSON
 
 ```bash
 node dist/main.js \
@@ -119,8 +118,8 @@ node dist/main.js \
 - `stdout`: always final JSON
 - `stderr`: logs and errors
 - `--output-file <path>`: also writes the JSON to disk
-- screen video:
-  - saved next to the output JSON as `.mp4` when `--output-file` is set
+- browser video:
+  - saved next to the output JSON as `.webm` when `--output-file` is set
   - otherwise saved under a temp artifact directory
 
 ## Facebook post-engagement output

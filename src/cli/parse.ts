@@ -93,7 +93,6 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     let requestTimeoutSecs = parseInteger(process.env.SCRAPE_REQUEST_TIMEOUT_SECS ?? '240', 'requestTimeoutSecs', 30, 3600);
     let concurrency = parseInteger(process.env.SCRAPE_CONCURRENCY ?? '1', 'concurrency', 1, 16);
     const artifactRootDir = process.env.SCRAPE_ARTIFACT_ROOT_DIR ?? defaultArtifactRootDir;
-    let screenIndex: number | undefined;
     let verbose = false;
 
     for (let index = 0; index < argv.length; index++) {
@@ -141,10 +140,6 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
                 requestTimeoutSecs = parseInteger(takeValue(argv, index, '--request-timeout-secs'), 'requestTimeoutSecs', 30, 3600);
                 index += 1;
                 break;
-            case '--screen-index':
-                screenIndex = parseInteger(takeValue(argv, index, '--screen-index'), 'screenIndex', 0, 32);
-                index += 1;
-                break;
             case '--verbose':
                 verbose = true;
                 break;
@@ -172,7 +167,6 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
         profileRootDir,
         waitAfterNavigationMs,
         requestTimeoutSecs,
-        screenIndex,
         verbose,
         artifactRootDir,
     };
