@@ -48,6 +48,7 @@ If you are adding or changing a target or scraper, read these files first:
 
 - `.agents/skills/repo-implement-feature/SKILL.md` — implementation workflow for code changes in this repo
 - `.agents/skills/repo-docs-sync/SKILL.md` — documentation update workflow paired with implementation work
+- `.agents/skills/update-changelog/SKILL.md` — changelog update workflow for unreleased notes
 
 ## Documentation rules
 

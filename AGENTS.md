@@ -110,8 +110,9 @@ Whenever you update code, refactor behavior, or add a feature, first load `.agen
 
 - implementation workflow: `.agents/skills/repo-implement-feature/SKILL.md`
 - docs sync: `.agents/skills/repo-docs-sync/SKILL.md`
+- changelog updates: `.agents/skills/update-changelog/SKILL.md`
 
-Use the implementation skill for code changes and the docs sync skill to keep repository docs aligned in the same change.
+Use the implementation skill for code changes, the docs sync skill to keep repository docs aligned in the same change, and the changelog skill when updating release notes.
 
 ## Development rules
 

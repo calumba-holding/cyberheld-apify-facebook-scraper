@@ -41,10 +41,12 @@ npm install
 npm run build
 ```
 
-Documentation sync is handled as a project-local skill instead of hook automation:
+Repository workflow guidance is handled with project-local skills:
+- `.agents/skills/repo-implement-feature/SKILL.md`
 - `.agents/skills/repo-docs-sync/SKILL.md`
+- `.agents/skills/update-changelog/SKILL.md`
 
-When code changes affect contracts, scraper behavior, or repository workflow, update the docs in the same change.
+When code changes affect contracts, scraper behavior, or repository workflow, update the docs in the same change. Use the changelog skill when preparing unreleased notes in `CHANGELOG.md`.
 
 ## First run
 
