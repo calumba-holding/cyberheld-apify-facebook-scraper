@@ -119,8 +119,10 @@ node dist/main.js \
 - `stderr`: logs and errors
 - `--output-file <path>`: also writes the JSON to disk
 - browser video:
-  - saved next to the output JSON as `.webm` when `--output-file` is set
-  - otherwise saved under a temp artifact directory
+  - at most one final `.webm` artifact is kept per scrape run
+  - saved next to the output JSON when `--output-file` is set
+  - otherwise saved under the temp artifact directory for that run
+  - temporary raw Playwright video files are cleaned up automatically
 
 ## Facebook post-engagement output
 
