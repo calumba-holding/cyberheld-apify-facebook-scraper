@@ -7,6 +7,7 @@ import type { LaunchBrowserOptions, ProfileLoginOptions, RunScrapeOptions } from
 import { COMMENT_REACTIONS_SCRAPER, scrapeCommentReactions } from './scrapers/comment-reactions/index.js';
 import { POST_ENGAGEMENT_SCRAPER, scrapePostEngagement } from './scrapers/post-engagement/index.js';
 import { resolveFacebookPostUrl } from './shared/url.js';
+import { slowlyScrollToTop } from './shared/video-context.js';
 import type { FacebookPlugin, FacebookScrapeResult } from './types.js';
 import { getLoginUrl, getProfileDir } from './profile.js';
 
@@ -76,6 +77,8 @@ const runScrape = async (
         } else {
             throw new Error(`Unsupported Facebook scraper: ${scraper}`);
         }
+
+        if (options.screenVideo) await slowlyScrollToTop(page);
 
         await closePage();
         return scrapeResult;

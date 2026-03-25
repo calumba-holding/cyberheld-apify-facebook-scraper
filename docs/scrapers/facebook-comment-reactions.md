@@ -32,6 +32,7 @@ node dist/main.js \
 - extracts all reactions for the matching comment only
 - does not scrape post reactions
 - does not perform a full comment crawl
+- when `--screen-video` is enabled, slowly scrolls back to the top at the end so the recording includes the post context
 
 ## Output expectations
 

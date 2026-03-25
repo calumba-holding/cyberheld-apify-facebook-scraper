@@ -115,6 +115,7 @@ The `comment-reactions` scraper:
 - finds the linked target comment
 - extracts all reactions for that comment only
 - does not scrape post reactions
+- slowly scrolls back to the top at the end when `--screen-video` is enabled so the video shows the post context
 - fails the result if the target comment cannot be found
 
 ## Scrape multiple URLs in parallel
@@ -145,7 +146,7 @@ node dist/main.js \
 
 - `stdout`: always final JSON
 - `stderr`: logs and errors
-- `--output-file <path>`: also writes the JSON to disk
+- `--output-file <path>`: also writes the JSON to disk using the run-scoped filename `<run-id>_<basename>`
 - browser video:
   - at most one final `.webm` artifact is kept per scrape run
   - saved next to the output JSON when `--output-file` is set

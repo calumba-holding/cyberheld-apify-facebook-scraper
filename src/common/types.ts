@@ -5,6 +5,7 @@ export type SupportedTarget = 'facebook';
 export interface RunScrapeOptions {
     waitAfterNavigationMs: number;
     requestTimeoutSecs: number;
+    screenVideo?: boolean;
 }
 
 export interface ProfileLoginOptions {

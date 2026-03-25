@@ -21,7 +21,7 @@ When `--screen-video` is enabled:
 
 ## Final artifact location
 
-- with `--output-file <path>`: save video next to the JSON output file
+- with `--output-file <path>`: save the video next to the run-scoped JSON output file, with the JSON written as `<run-id>_<basename>` and the video written as `<run-id>.webm`
 - without `--output-file`: save under the per-run artifact directory
 
 ## Output contract
@@ -36,6 +36,10 @@ artifacts: {
   };
 }
 ```
+
+## Recorded-flow note
+
+When `--screen-video` is enabled, scrapers may add small end-of-run navigation behavior for video clarity. Current behavior includes a slow scroll back to the top after extraction so the recording ends with the surrounding post context visible.
 
 ## Design rule for new scrapers
 

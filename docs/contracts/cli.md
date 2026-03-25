@@ -48,7 +48,7 @@ node dist/main.js [scrape] profile path --target <target>
 
 - `stdout`: final JSON only
 - `stderr`: logs, warnings, and user-facing errors
-- `--output-file`: writes the same final JSON to disk
+- `--output-file`: writes the same final JSON to disk using the run-scoped filename `<run-id>_<basename>`
 
 New scrapers must keep the same stdout/stderr split.
 
