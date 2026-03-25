@@ -11,6 +11,7 @@ import type { FacebookScrapeResult } from '../facebook/types.js';
 import type { TargetPlugin } from '../common/types.js';
 import { helpText } from './parse.js';
 import type { ParsedCli, ProfileStatusOutput, RunCliOptions } from './types.js';
+import { resolveRunOutputFile } from './output-paths.js';
 import { finalizeVideoArtifact, prepareRawVideoDir } from './video-artifacts.js';
 const ensureParentDirectory = async (filePath: string): Promise<void> => {
     await mkdir(dirname(filePath), { recursive: true });
@@ -142,7 +143,7 @@ export const runCli = async (parsed: ParsedCli): Promise<void> => {
 
     setVerboseLogging(parsed.options.verbose);
     const outputJson = await runScrapeCommand(parsed.options);
-    await emitJson(outputJson, parsed.options.outputFile);
+    await emitJson(outputJson, resolveRunOutputFile(parsed.options.outputFile, outputJson.run.runId));
     if (outputJson.summary.failed > 0) process.exitCode = 1;
 };
 
