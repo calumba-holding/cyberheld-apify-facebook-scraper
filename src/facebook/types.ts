@@ -43,7 +43,6 @@ export interface FacebookScrapeResult {
     postContent?: string;
     reactions: ReactionUser[];
     comments: ScrapedComment[];
-    videoPath?: string;
 }
 
 export type FacebookPlugin = TargetPlugin<FacebookScrapeResult>;

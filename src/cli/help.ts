@@ -22,7 +22,7 @@ Required for scraping:
 Options:
   --concurrency <n>          Number of tabs to scrape in parallel (default: 1)
   --screen-video             Record Playwright browser video for the scrape
-  --no-screen-video          Disable screen recording
+  --no-screen-video          Disable Playwright browser video recording
   --output-file <path>       Also write the final JSON to a file
   --chrome-executable <path> Chrome executable path
   --profile-root-dir <dir>   Root dir for persistent target profiles
@@ -36,7 +36,8 @@ Options:
 Output:
   - stdout: final JSON
   - stderr: logs and errors
-  - file: only when --output-file is set
+  - JSON file: only when --output-file is set
+  - video artifact: also written when --screen-video is enabled
 
 Examples:
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."

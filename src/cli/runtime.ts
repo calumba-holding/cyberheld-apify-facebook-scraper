@@ -11,7 +11,7 @@ import type { FacebookScrapeResult } from '../facebook/types.js';
 import type { TargetPlugin } from '../common/types.js';
 import { helpText } from './parse.js';
 import type { ParsedCli, ProfileStatusOutput, RunCliOptions } from './types.js';
-import { finalizeVideoArtifact } from './video-artifacts.js';
+import { finalizeVideoArtifact, prepareRawVideoDir } from './video-artifacts.js';
 const ensureParentDirectory = async (filePath: string): Promise<void> => {
     await mkdir(dirname(filePath), { recursive: true });
 };
@@ -47,27 +47,19 @@ const runScrapeCommand = async (options: RunCliOptions): Promise<ScrapeRunOutput
     const plugin = getTargetPlugin(options.target) as TargetPlugin<FacebookScrapeResult>;
     const profileDir = plugin.getProfileDir(options.profileRootDir);
     let videoArtifact: VideoArtifact = { present: false };
-    const videoCandidates: string[] = [];
-    const recordVideoDir = options.screenVideo
-        ? options.outputFile
-            ? dirname(options.outputFile)
-            : join(options.artifactRootDir, runId)
-        : undefined;
-
-    if (recordVideoDir) await mkdir(recordVideoDir, { recursive: true });
-
+    const recordVideoDir = await prepareRawVideoDir(options, runId);
     const context = await plugin.launchPersistentBrowser({
         chromeExecutable: options.chromeExecutable,
         profileRootDir: options.profileRootDir,
         recordVideoDir,
     });
+    let results: ScrapeItemOutput[] = [];
 
     try {
-        const results = await mapLimit(options.targetUrls, options.concurrency, async (targetUrl): Promise<ScrapeItemOutput> => {
+        results = await mapLimit(options.targetUrls, options.concurrency, async (targetUrl): Promise<ScrapeItemOutput> => {
             try {
                 log.info(`Scraping ${targetUrl}`);
                 const scrapeResult = await plugin.runScrape(context, options.scraper, targetUrl, options);
-                if (scrapeResult.videoPath) videoCandidates.push(scrapeResult.videoPath);
                 return buildSuccessOutput(scrapeResult, runId);
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
@@ -75,40 +67,32 @@ const runScrapeCommand = async (options: RunCliOptions): Promise<ScrapeRunOutput
                 return buildFailedOutput(targetUrl, runId, message);
             }
         });
-
-        videoArtifact = await finalizeVideoArtifact(options, runId, videoCandidates);
-
-        return buildRunOutput(
-            options.target,
-            options.scraper,
-            profileDir,
-            runId,
-            startedAt,
-            new Date().toISOString(),
-            options.concurrency,
-            options.targetUrls.length,
-            videoArtifact,
-            results,
-        );
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        videoArtifact = await finalizeVideoArtifact(options, runId, videoCandidates);
-
-        return buildRunOutput(
-            options.target,
-            options.scraper,
-            profileDir,
-            runId,
-            startedAt,
-            new Date().toISOString(),
-            options.concurrency,
-            options.targetUrls.length,
-            videoArtifact,
-            options.targetUrls.map((targetUrl) => buildFailedOutput(targetUrl, runId, message)),
-        );
+        results = options.targetUrls.map((targetUrl) => buildFailedOutput(targetUrl, runId, message));
     } finally {
         await context.close().catch(() => undefined);
     }
+
+    videoArtifact = await finalizeVideoArtifact(
+        options,
+        runId,
+        recordVideoDir,
+        results.some((result) => result.scrape.status !== 'FAILED'),
+    );
+
+    return buildRunOutput(
+        options.target,
+        options.scraper,
+        profileDir,
+        runId,
+        startedAt,
+        new Date().toISOString(),
+        options.concurrency,
+        options.targetUrls.length,
+        videoArtifact,
+        results,
+    );
 };
 
 const runProfileLoginCommand = async (target: RunCliOptions['target'], chromeExecutable: string, profileRootDir: string): Promise<ProfileStatusOutput> => {

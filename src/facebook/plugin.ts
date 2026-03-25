@@ -134,7 +134,6 @@ const runScrape = async (
     }
 
     const page = await context.newPage();
-    const pageVideo = page.video();
     let pageClosed = false;
     const closePage = async (): Promise<void> => {
         if (pageClosed) return;
@@ -153,8 +152,7 @@ const runScrape = async (
 
         const scrapeResult = await scrapePostEngagement(page, targetUrl, resolvedPostUrl, options.waitAfterNavigationMs);
         await closePage();
-        const videoPath = pageVideo ? await pageVideo.path().catch(() => undefined) : undefined;
-        return { ...scrapeResult, videoPath };
+        return scrapeResult;
     } catch (error) {
         await closePage();
         throw error;
