@@ -36,8 +36,7 @@
     "test:unit": "vitest run",
     "test:browser": "playwright test",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "hooks:install": "git config core.hooksPath .githooks"
+    "test:coverage": "vitest run --coverage"
   },
   "license": "ISC"
 }

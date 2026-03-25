@@ -81,13 +81,34 @@ src/
 npm install
 npm run build
 npm run lint
-npm run hooks:install
 
 node dist/main.js --help
 node dist/main.js profile login --target facebook
 node dist/main.js profile path --target facebook
 node dist/main.js --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
 ```
+
+## Documentation-first workflow
+
+Before adding or changing a target, scraper, CLI contract, output contract, or automation, read:
+
+- `docs/README.md`
+- `docs/architecture.md`
+- `docs/contracts/cli.md`
+- `docs/contracts/output-json.md`
+- `docs/contracts/video-artifacts.md`
+- `docs/scrapers/add-a-scraper.md`
+- `docs/targets/facebook.md` for Facebook work
+
+Repository docs are part of the implementation contract and must be updated in the same change.
+Whenever you update code, refactor behavior, or add a feature, first load `.agents/skills/repo-implement-feature/SKILL.md` and then use `.agents/skills/repo-docs-sync/SKILL.md` before finishing.
+
+## Project-local skills
+
+- implementation workflow: `.agents/skills/repo-implement-feature/SKILL.md`
+- docs sync: `.agents/skills/repo-docs-sync/SKILL.md`
+
+Use the implementation skill for code changes and the docs sync skill to keep repository docs aligned in the same change.
 
 ## Implementation guidance
 

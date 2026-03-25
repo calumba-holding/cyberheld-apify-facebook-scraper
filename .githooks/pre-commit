@@ -1,5 +1,0 @@
-#!/bin/sh
-set -eu
-
-printf 'Running lint before commit...\n'
-npm run lint

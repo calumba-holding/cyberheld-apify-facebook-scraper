@@ -26,7 +26,7 @@ src/
 - strict JSON output to stdout
 - optional `--output-file`
 - optional browser-only video capture
-- strict linting with a pre-commit hook
+- strict linting via `npm run lint`
 
 ## Requirements
 
@@ -39,10 +39,12 @@ src/
 ```bash
 npm install
 npm run build
-npm run hooks:install
 ```
 
-The last command configures Git to use `.githooks/pre-commit`, which runs `npm run lint` before every commit.
+Documentation sync is handled as a project-local skill instead of hook automation:
+- `.agents/skills/repo-docs-sync/SKILL.md`
+
+When code changes affect contracts, scraper behavior, or repository workflow, update the docs in the same change.
 
 ## First run
 
@@ -58,6 +60,13 @@ node dist/main.js profile login --target facebook
 scrape --target <target> --scraper <scraper> --target-url <url> [--target-url <url> ...] [options]
 scrape profile login --target <target> [options]
 scrape profile path --target <target>
+```
+
+When running the compiled entrypoint directly, both forms are accepted:
+
+```bash
+node dist/main.js --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
+node dist/main.js scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
 ```
 
 ## Profile commands
