@@ -21,12 +21,22 @@ const waitForReactionModal = async (page: Page, baselineDialogs: number): Promis
 
 export const findReactionButton = async (comment: Locator): Promise<Locator | null> => {
     const buttons = comment.locator(COMMENT_REACTION_BUTTON_SELECTOR);
+    let selectedButton: Locator | null = null;
+    let selectedTop = Number.POSITIVE_INFINITY;
 
     for (let index = 0; index < await buttons.count(); index++) {
         const button = buttons.nth(index);
-        if (await button.isVisible().catch(() => false)) return button;
+        if (!(await button.isVisible().catch(() => false))) continue;
+
+        const box = await button.boundingBox().catch(() => null);
+        const top = box?.y ?? Number.POSITIVE_INFINITY;
+        if (top < selectedTop) {
+            selectedButton = button;
+            selectedTop = top;
+        }
     }
 
+    if (selectedButton) return selectedButton;
     return (await buttons.count()) ? buttons.first() : null;
 };
 

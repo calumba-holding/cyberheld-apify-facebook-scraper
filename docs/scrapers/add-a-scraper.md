@@ -107,6 +107,8 @@ Before considering the scraper done:
 - `npm run lint`
 - `npm run build`
 
-## Reference example
+## Reference examples
 
-See `docs/scrapers/facebook-post-engagement.md` for the current scraper baseline.
+See:
+- `docs/scrapers/facebook-post-engagement.md` for the full-post baseline
+- `docs/scrapers/facebook-comment-reactions.md` for a targeted single-comment scraper

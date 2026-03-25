@@ -1,47 +1,14 @@
 import { mkdir } from 'node:fs/promises';
 
-import { chromium, type BrowserContext, type Locator, type Page } from 'playwright';
+import { chromium, type BrowserContext } from 'playwright';
 
 import { log } from '../common/logger.js';
 import type { LaunchBrowserOptions, ProfileLoginOptions, RunScrapeOptions } from '../common/types.js';
+import { COMMENT_REACTIONS_SCRAPER, scrapeCommentReactions } from './scrapers/comment-reactions/index.js';
+import { POST_ENGAGEMENT_SCRAPER, scrapePostEngagement } from './scrapers/post-engagement/index.js';
+import { resolveFacebookPostUrl } from './shared/url.js';
 import type { FacebookPlugin, FacebookScrapeResult } from './types.js';
-import { switchToAllComments } from './comment-filter.js';
-import { extractAllComments } from './comments.js';
-import { extractPostContent } from './post-extraction.js';
-import { findTargetPostRoot } from './post-root.js';
 import { getLoginUrl, getProfileDir } from './profile.js';
-import { extractAllReactions } from './reactions.js';
-
-const POST_ENGAGEMENT_SCRAPER = 'post-engagement';
-
-const sanitizeFacebookPostUrl = (url: string): string => {
-    try {
-        const parsed = new URL(url);
-        parsed.searchParams.delete('rdid');
-        parsed.searchParams.delete('share_url');
-        return parsed.toString();
-    } catch {
-        return url;
-    }
-};
-
-const resolveFacebookPostUrl = async (url: string): Promise<string> => {
-    let current = url;
-    for (let redirect = 0; redirect < 5; redirect++) {
-        try {
-            const response = await fetch(current, { method: 'HEAD', redirect: 'manual' });
-            if (response.status < 300 || response.status >= 400) return sanitizeFacebookPostUrl(current);
-
-            const location = response.headers.get('location');
-            if (!location) return sanitizeFacebookPostUrl(current);
-            current = new URL(location, current).toString();
-        } catch {
-            return sanitizeFacebookPostUrl(current);
-        }
-    }
-
-    return sanitizeFacebookPostUrl(current);
-};
 
 const closeExtraBlankPages = async (context: BrowserContext): Promise<void> => {
     const blankPages = context.pages().filter((page) => page.url() === 'about:blank');
@@ -50,51 +17,6 @@ const closeExtraBlankPages = async (context: BrowserContext): Promise<void> => {
     }));
 };
 
-const resolvePostScope = async (page: Page, targetUrl: string): Promise<Locator> => {
-    const root = await findTargetPostRoot(page, targetUrl);
-    if (!root) {
-        log.warning('Could not isolate the target Facebook post container. Falling back to page scope.');
-        return page.locator('body');
-    }
-
-    log.info('Scoped extraction to the target Facebook post container.');
-    return root;
-};
-
-const scrapePostEngagement = async (
-    page: Page,
-    inputUrl: string,
-    finalUrl: string,
-    waitAfterNavigationMs: number,
-): Promise<FacebookScrapeResult> => {
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(waitAfterNavigationMs);
-
-    const scope: Locator = await resolvePostScope(page, finalUrl);
-    const postContent = await extractPostContent(scope);
-
-    log.info(`Page URL before comment scrape: ${page.url()}`);
-    const initialComments = await extractAllComments(page, scope);
-    const commentFilter = await switchToAllComments(page, scope);
-    const comments = commentFilter.shouldReloadComments
-        ? await extractAllComments(page, scope)
-        : initialComments;
-
-    log.info(`Page URL before reaction scrape: ${page.url()}`);
-    const reactions = await extractAllReactions(page, scope);
-
-    return {
-        inputUrl,
-        finalUrl,
-        scrapedAt: new Date().toISOString(),
-        reactionCount: reactions.length,
-        commentCount: comments.length,
-        allCommentsFilterApplied: commentFilter.applied,
-        postContent,
-        reactions,
-        comments,
-    };
-};
 
 const launchPersistentBrowser = async (options: LaunchBrowserOptions): Promise<BrowserContext> => {
     const profileDir = getProfileDir(options.profileRootDir);
@@ -129,10 +51,6 @@ const runScrape = async (
     targetUrl: string,
     options: RunScrapeOptions,
 ): Promise<FacebookScrapeResult> => {
-    if (scraper !== POST_ENGAGEMENT_SCRAPER) {
-        throw new Error(`Unsupported Facebook scraper: ${scraper}`);
-    }
-
     const page = await context.newPage();
     let pageClosed = false;
     const closePage = async (): Promise<void> => {
@@ -150,7 +68,15 @@ const runScrape = async (
             timeout: options.requestTimeoutSecs * 1000,
         });
 
-        const scrapeResult = await scrapePostEngagement(page, targetUrl, resolvedPostUrl, options.waitAfterNavigationMs);
+        let scrapeResult: FacebookScrapeResult;
+        if (scraper === POST_ENGAGEMENT_SCRAPER) {
+            scrapeResult = await scrapePostEngagement(page, targetUrl, resolvedPostUrl, options.waitAfterNavigationMs);
+        } else if (scraper === COMMENT_REACTIONS_SCRAPER) {
+            scrapeResult = await scrapeCommentReactions(page, targetUrl, resolvedPostUrl, options.waitAfterNavigationMs);
+        } else {
+            throw new Error(`Unsupported Facebook scraper: ${scraper}`);
+        }
+
         await closePage();
         return scrapeResult;
     } catch (error) {
@@ -161,7 +87,7 @@ const runScrape = async (
 
 export const facebookPlugin: FacebookPlugin = {
     target: 'facebook',
-    scrapers: [POST_ENGAGEMENT_SCRAPER],
+    scrapers: [POST_ENGAGEMENT_SCRAPER, COMMENT_REACTIONS_SCRAPER],
     getProfileDir,
     launchPersistentBrowser,
     openProfileLoginBrowser,

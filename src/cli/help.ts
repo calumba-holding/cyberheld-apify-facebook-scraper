@@ -44,8 +44,12 @@ Output:
   - JSON file: only when --output-file is set
   - video artifact: also written when --screen-video is enabled
 
+Notes:
+  - comment-reactions requires a Facebook URL containing ?comment_id=...
+
 Examples:
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
+  scrape --target facebook --scraper comment-reactions --target-url "https://www.facebook.com/...?...&comment_id=123456"
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/a" --target-url "https://www.facebook.com/b" --concurrency 2
   scrape profile login --target facebook
   scrape profile path --target facebook

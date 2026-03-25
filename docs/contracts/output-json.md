@@ -87,6 +87,10 @@ Preferred approach:
 - keep `comments` present even when empty
 - use empty arrays and explicit booleans instead of shape drift
 
+## Scraper-specific status note
+
+The `comment-reactions` scraper may report `SUCCEEDED` while leaving post reactions empty, because its success condition is finding the target comment and extracting that comment's reactions rather than scraping the post reaction list.
+
 ## Comment reaction rule
 
 Comment-level reactions belong inside the comment object:

@@ -51,6 +51,8 @@ export type ScrapeRunOutput = {
 };
 
 const toStatus = (result: FacebookScrapeResult): 'SUCCEEDED' | 'PARTIAL' => {
+    if (result.status) return result.status;
+
     const commentsExtracted = result.comments.length > 0;
     const postReactionsExtracted = result.reactions.length > 0;
     if (result.allCommentsFilterApplied && commentsExtracted && postReactionsExtracted) return 'SUCCEEDED';

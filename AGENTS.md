@@ -9,6 +9,7 @@ A local CLI scraper with a plugin-oriented architecture.
 Current implementation:
 - target: `facebook`
 - scraper: `post-engagement`
+- scraper: `comment-reactions`
 
 The scraper:
 - reuses a persistent Chrome profile per target

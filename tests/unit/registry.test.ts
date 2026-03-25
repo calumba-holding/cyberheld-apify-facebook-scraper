@@ -18,10 +18,11 @@ describe('registry', () => {
 
     it('returns the facebook plugin when the target is facebook', () => {
         expect(getTargetPlugin('facebook').target).toBe('facebook');
-        expect(getTargetPlugin('facebook').scrapers).toEqual(['post-engagement']);
+        expect(getTargetPlugin('facebook').scrapers).toEqual(['post-engagement', 'comment-reactions']);
     });
 
     it('returns true when the scraper is supported for the target', () => {
         expect(isSupportedScraperForTarget('facebook', 'post-engagement')).toBe(true);
+        expect(isSupportedScraperForTarget('facebook', 'comment-reactions')).toBe(true);
     });
 });

@@ -43,6 +43,7 @@ export interface FacebookScrapeResult {
     postContent?: string;
     reactions: ReactionUser[];
     comments: ScrapedComment[];
+    status?: 'SUCCEEDED' | 'PARTIAL';
 }
 
 export type FacebookPlugin = TargetPlugin<FacebookScrapeResult>;

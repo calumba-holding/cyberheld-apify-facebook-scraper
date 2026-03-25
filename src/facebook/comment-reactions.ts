@@ -76,6 +76,34 @@ const collectUsersForReaction = async (page: Page, modal: Locator, reaction: str
     return users;
 };
 
+export const extractReactionsForComment = async (
+    page: Page,
+    comment: Locator,
+    target?: Pick<ScrapedComment, 'id'>,
+): Promise<CommentReactionDetails | undefined> => {
+    const button = await findReactionButton(comment);
+    if (!button) return undefined;
+
+    const label = (await button.getAttribute('aria-label').catch(() => '')) || '';
+    if (!label) return undefined;
+
+    const modal = await openCommentReactionModal(page, comment);
+    if (!modal) {
+        log.warning(`Could not open nested reaction modal for comment ${target?.id ?? 'Unknown ID'}.`);
+        return undefined;
+    }
+
+    try {
+        await page.waitForTimeout(500);
+        const breakdown = (await collectReactionTabs(modal)).filter((tab) => tab.reaction !== 'All');
+        const users: CommentReactionUser[] = [];
+        for (const tab of breakdown) users.push(...await collectUsersForReaction(page, modal, tab.reaction));
+        return { count: parseCount(label), label, breakdown, users };
+    } finally {
+        await closeCommentReactionModal(page, modal);
+    }
+};
+
 export const attachCommentReactions = async (page: Page, comments: Locator, records: ScrapedComment[]): Promise<ScrapedComment[]> => {
     const byKey = new Map(records.map((record) => [buildCommentKey(record), record]));
     const processed = new Set<string>();
@@ -87,22 +115,9 @@ export const attachCommentReactions = async (page: Page, comments: Locator, reco
         const target = byKey.get(key);
         if (!target || processed.has(key)) continue;
         processed.add(key);
-        const button = await findReactionButton(comment);
-        if (!button) continue;
-        const label = (await button.getAttribute('aria-label').catch(() => '')) || '';
-        if (!label) continue;
-        const modal = await openCommentReactionModal(page, comment);
-        if (!modal) {
-            log.warning(`Could not open nested reaction modal for comment ${target.id}.`);
-            continue;
-        }
-        await page.waitForTimeout(500);
-        const breakdown = (await collectReactionTabs(modal)).filter((tab) => tab.reaction !== 'All');
-        const users: CommentReactionUser[] = [];
-        for (const tab of breakdown) users.push(...await collectUsersForReaction(page, modal, tab.reaction));
-        const reactions: CommentReactionDetails = { count: parseCount(label), label, breakdown, users };
-        target.reactions = reactions;
-        await closeCommentReactionModal(page, modal);
+
+        const reactions = await extractReactionsForComment(page, comment, target);
+        if (reactions) target.reactions = reactions;
     }
 
     return records;

@@ -13,6 +13,7 @@ This repository is a local CLI scraper.
 ## Current supported target/scraper
 
 - `facebook` + `post-engagement`
+- `facebook` + `comment-reactions`
 
 ## Key directories
 

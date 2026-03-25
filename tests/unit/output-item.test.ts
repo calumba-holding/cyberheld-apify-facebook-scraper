@@ -47,6 +47,22 @@ describe('buildSuccessOutput', () => {
         expect(output.completeness.postReactionsExtracted).toBe(false);
         expect(output.post.reactions).toEqual([]);
     });
+
+    it('respects an explicit scraper status override', () => {
+        const output = buildSuccessOutput(buildResult({
+            allCommentsFilterApplied: false,
+            reactionCount: 0,
+            reactions: [],
+            status: 'SUCCEEDED',
+        }), 'job-4');
+
+        expect(output.scrape.status).toBe('SUCCEEDED');
+        expect(output.completeness).toEqual({
+            allCommentsFilterApplied: false,
+            commentsExtracted: true,
+            postReactionsExtracted: false,
+        });
+    });
 });
 
 describe('buildFailedOutput', () => {

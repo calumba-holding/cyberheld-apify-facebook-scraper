@@ -20,6 +20,7 @@ node dist/main.js [scrape] profile path --target <target>
 
 - target: `facebook`
 - scraper: `post-engagement`
+- scraper: `comment-reactions`
 
 ## Flag rules
 
@@ -66,8 +67,8 @@ New scrapers must keep the same stdout/stderr split.
 
 Scraper-specific validation is allowed when it is deterministic at parse/dispatch time.
 
-Example:
-- a future scraper may require a `comment_id` query parameter in the target URL
+Current scraper-specific requirement:
+- `comment-reactions` requires a Facebook target URL containing `?comment_id=...`
 
 ## Naming rules
 

@@ -4,8 +4,9 @@
 
 Facebook is currently the only supported target.
 
-Current scraper:
+Current scrapers:
 - `post-engagement`
+- `comment-reactions`
 
 ## Behavioral rules
 
@@ -39,6 +40,7 @@ When adding new URL helpers:
 For Facebook post deep links that include `comment_id`:
 - normal post views usually surface the target comment in a highlighted position near the top
 - reel or non-standard layouts may still require a bounded fallback scan
+- the `comment-reactions` scraper should stop once the target comment is found instead of doing a full comment crawl
 
 Do not assume a full comment crawl is required for every comment-targeted scraper.
 

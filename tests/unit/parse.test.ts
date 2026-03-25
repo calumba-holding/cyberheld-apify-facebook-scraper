@@ -86,6 +86,23 @@ describe('parseCliArgs', () => {
         }
     });
 
+    it('accepts the comment-reactions scraper for facebook', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'comment-reactions',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123?comment_id=456',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.scraper).toBe('comment-reactions');
+            expect(parsed.options.targetUrls).toEqual(['https://www.facebook.com/example/posts/123?comment_id=456']);
+        }
+    });
+
     it('returns run options from environment defaults when optional flags are omitted', () => {
         process.env.SCRAPE_CONCURRENCY = '3';
         process.env.SCRAPE_SCREEN_VIDEO = 'true';

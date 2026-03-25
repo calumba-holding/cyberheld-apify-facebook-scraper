@@ -5,6 +5,7 @@ Local CLI scraper with a plugin-oriented target architecture.
 Current plugin support:
 - `facebook`
   - scraper: `post-engagement`
+  - scraper: `comment-reactions`
 
 The CLI reuses a persistent Chrome profile per target, always prints JSON to stdout, and can optionally record browser video via Playwright while scraping.
 
@@ -99,6 +100,22 @@ node dist/main.js \
   --scraper post-engagement \
   --target-url "https://www.facebook.com/..."
 ```
+
+## Scrape comment reactions for one target comment
+
+```bash
+node dist/main.js \
+  --target facebook \
+  --scraper comment-reactions \
+  --target-url "https://www.facebook.com/...?...&comment_id=123456789"
+```
+
+The `comment-reactions` scraper:
+- requires a Facebook URL with `?comment_id=...`
+- finds the linked target comment
+- extracts all reactions for that comment only
+- does not scrape post reactions
+- fails the result if the target comment cannot be found
 
 ## Scrape multiple URLs in parallel
 
