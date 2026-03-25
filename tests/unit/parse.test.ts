@@ -58,6 +58,34 @@ describe('parseCliArgs', () => {
         }
     });
 
+    it('accepts an optional leading scrape command token for direct node invocation', () => {
+        const parsed = parseCliArgs([
+            'scrape',
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.target).toBe('facebook');
+            expect(parsed.options.scraper).toBe('post-engagement');
+            expect(parsed.options.targetUrls).toEqual(['https://www.facebook.com/example/posts/123']);
+        }
+    });
+
+    it('accepts an optional leading scrape command token for profile commands', () => {
+        const parsed = parseCliArgs(['scrape', 'profile', 'path', '--target', 'facebook']);
+
+        expect(parsed.kind).toBe('profile-path');
+        if (parsed.kind === 'profile-path') {
+            expect(parsed.options.target).toBe('facebook');
+        }
+    });
+
     it('returns run options from environment defaults when optional flags are omitted', () => {
         process.env.SCRAPE_CONCURRENCY = '3';
         process.env.SCRAPE_SCREEN_VIDEO = 'true';

@@ -172,16 +172,24 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     };
 };
 
+const normalizeArgv = (argv: string[]): string[] => (
+    argv[0] === 'scrape' ? argv.slice(1) : argv
+);
+
 export const parseCliArgs = (argv: string[]): ParsedCli => {
-    if (argv.length === 0 || argv.includes('-h') || argv.includes('--help')) return { kind: 'help', text: helpText };
-    if (argv.includes('--version')) return { kind: 'version' };
-    if (argv[0] === 'profile') {
-        const options = parseProfileArgs(argv);
+    const normalizedArgv = normalizeArgv(argv);
+
+    if (normalizedArgv.length === 0 || normalizedArgv.includes('-h') || normalizedArgv.includes('--help')) {
+        return { kind: 'help', text: helpText };
+    }
+    if (normalizedArgv.includes('--version')) return { kind: 'version' };
+    if (normalizedArgv[0] === 'profile') {
+        const options = parseProfileArgs(normalizedArgv);
         return options.command === 'profile-login'
             ? { kind: 'profile-login', options }
             : { kind: 'profile-path', options };
     }
-    return { kind: 'run', options: parseRunArgs(argv) };
+    return { kind: 'run', options: parseRunArgs(normalizedArgv) };
 };
 
 export { helpText };

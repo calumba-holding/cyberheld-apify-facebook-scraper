@@ -14,6 +14,11 @@ Usage:
   scrape profile login --target <target> [options]
   scrape profile path --target <target>
 
+Direct invocation:
+  node dist/main.js [scrape] --target <target> --scraper <scraper> --target-url <url> [--target-url <url> ...] [options]
+  node dist/main.js [scrape] profile login --target <target> [options]
+  node dist/main.js [scrape] profile path --target <target>
+
 Required for scraping:
   --target <target>          Target platform (${SUPPORTED_TARGETS.join(', ')})
   --scraper <scraper>        Scraper name, e.g. post-engagement
