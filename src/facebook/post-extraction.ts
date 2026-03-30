@@ -26,7 +26,7 @@ export const extractPostContent = async (scope: Locator, anchorY?: number): Prom
                     const leftAboveAnchor = left.top <= preferredY;
                     const rightAboveAnchor = right.top <= preferredY;
                     if (leftAboveAnchor !== rightAboveAnchor) return leftAboveAnchor ? -1 : 1;
-                    if (leftAboveAnchor && rightAboveAnchor && left.top !== right.top) return left.top - right.top;
+                    if (leftAboveAnchor && rightAboveAnchor && left.top !== right.top) return right.top - left.top;
                     const leftDistance = Math.abs(left.top - preferredY);
                     const rightDistance = Math.abs(right.top - preferredY);
                     if (leftDistance !== rightDistance) return leftDistance - rightDistance;

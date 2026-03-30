@@ -187,6 +187,9 @@ export const switchToAllComments = async (page: Page, scope: Locator = page.loca
             log.info('No comments filter is shown for this post. Treating visible comments as already complete.');
             return { applied: true, shouldReloadComments: false, state: 'not_available' };
         }
+
+        log.info('No comments filter or visible comments were found. Treating the post as having no visible comments.');
+        return { applied: true, shouldReloadComments: false, state: 'not_available' };
     }
 
     log.warning('Failed to switch the filter to "All comments".');
