@@ -35,7 +35,7 @@ node dist/main.js [scrape] profile path --target <target>
 ### Optional
 
 - `--concurrency <n>`
-- `--screen-video`
+- `--screen-video` (force-enable; the default is on)
 - `--no-screen-video`
 - `--output-file <path>`
 - `--chrome-executable <path>`
@@ -51,6 +51,7 @@ node dist/main.js [scrape] profile path --target <target>
 - `stdout`: final JSON only
 - `stderr`: logs, warnings, and user-facing errors
 - `--output-file`: writes the same final JSON to disk using the run-scoped filename `<run-id>_<basename>`
+- browser video is enabled by default for scrape runs unless `--no-screen-video` or `SCRAPE_SCREEN_VIDEO=false` disables it
 
 New scrapers must keep the same stdout/stderr split.
 

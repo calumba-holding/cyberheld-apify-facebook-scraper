@@ -14,7 +14,7 @@ Scrape engagement data for a Facebook post using a persistent Chrome profile.
 - extracts comments
 - attempts to switch to the "All comments" filter
 - extracts post reactions
-- enriches comments with comment-level reactions
+- does not enrich comments with comment-level reactions
 
 ## Inputs
 
@@ -26,6 +26,7 @@ Required:
 Optional:
 - `--concurrency <n>`
 - `--screen-video`
+- `--no-screen-video`
 - `--output-file <path>`
 - `--verbose`
 
@@ -38,12 +39,12 @@ A successful item includes:
 - `post.reactions`
 - `comments[]`
 
-Comment reactions are attached to individual comments in `comments[].reactions`.
+The scraper returns comments without `comments[].reactions`. Use `comment-reactions` for single-comment reaction extraction.
 
 ## Success semantics
 
 Current implementation treats an item as:
-- `SUCCEEDED` when all-comments filter was applied and both comments + post reactions were extracted
+- `SUCCEEDED` when the all-comments state was resolved and both extraction steps completed, including posts with zero visible comments and posts where the scraper can positively confirm an explicit zero-reaction state
 - `PARTIAL` when useful data was extracted but one of those completeness goals was missed
 - `FAILED` when runtime execution for the URL failed
 
