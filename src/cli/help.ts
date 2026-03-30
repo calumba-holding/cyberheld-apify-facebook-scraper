@@ -26,8 +26,8 @@ Required for scraping:
 
 Options:
   --concurrency <n>          Number of tabs to scrape in parallel (default: 1)
-  --screen-video             Record Playwright browser video for the scrape
-  --no-screen-video          Disable Playwright browser video recording
+  --screen-video             Force-enable Playwright browser video recording
+  --no-screen-video          Disable Playwright browser video recording (default is on)
   --output-file <path>       Also write the final JSON to a file
   --chrome-executable <path> Chrome executable path
   --profile-root-dir <dir>   Root dir for persistent target profiles
@@ -42,7 +42,7 @@ Output:
   - stdout: final JSON
   - stderr: logs and errors
   - JSON file: only when --output-file is set
-  - video artifact: also written when --screen-video is enabled
+  - video artifact: written by default unless --no-screen-video is set
 
 Notes:
   - comment-reactions requires a Facebook URL containing ?comment_id=...

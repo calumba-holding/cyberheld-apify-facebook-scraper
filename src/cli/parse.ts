@@ -85,7 +85,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     let target: SupportedTarget | undefined;
     let scraper: string | undefined;
     const targetUrls: string[] = [];
-    let screenVideo = parseBooleanEnv(process.env.SCRAPE_SCREEN_VIDEO, false);
+    let screenVideo = parseBooleanEnv(process.env.SCRAPE_SCREEN_VIDEO, true);
     let outputFile: string | undefined;
     let chromeExecutable = process.env.SCRAPE_CHROME_EXECUTABLE ?? defaultChromeExecutable;
     let profileRootDir = process.env.SCRAPE_PROFILE_ROOT_DIR ?? defaultProfileRootDir;

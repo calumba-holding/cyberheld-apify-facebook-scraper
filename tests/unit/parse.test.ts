@@ -39,7 +39,7 @@ describe('parseCliArgs', () => {
             expect(parsed.options.scraper).toBe('post-engagement');
             expect(parsed.options.targetUrls).toEqual(['https://www.facebook.com/example/posts/123']);
             expect(parsed.options.concurrency).toBe(1);
-            expect(parsed.options.screenVideo).toBe(false);
+            expect(parsed.options.screenVideo).toBe(true);
         }
     });
 
@@ -144,6 +144,23 @@ describe('parseCliArgs', () => {
             expect(parsed.options.waitAfterNavigationMs).toBe(1500);
             expect(parsed.options.requestTimeoutSecs).toBe(600);
             expect(parsed.options.artifactRootDir).toBe('/tmp/artifacts');
+        }
+    });
+
+    it('disables browser video when --no-screen-video is provided', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+            '--no-screen-video',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.screenVideo).toBe(false);
         }
     });
 

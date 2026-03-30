@@ -1,6 +1,6 @@
 # Video Artifact Contract
 
-Screen recording is optional and controlled by `--screen-video`.
+Screen recording is enabled by default for scrape runs and can be disabled with `--no-screen-video` or `SCRAPE_SCREEN_VIDEO=false`.
 
 ## Current behavior
 
@@ -11,7 +11,7 @@ Screen recording is optional and controlled by `--screen-video`.
 
 ## Storage behavior
 
-When `--screen-video` is enabled:
+When browser video is enabled:
 
 1. raw Playwright video files are written into a dedicated per-run temp directory
 2. the run is finalized
@@ -39,7 +39,7 @@ artifacts: {
 
 ## Recorded-flow note
 
-When `--screen-video` is enabled, scrapers may add small end-of-run navigation behavior for video clarity. Current behavior includes a slow scroll back to the top after extraction so the recording ends with the surrounding post context visible.
+When browser video is enabled, scrapers may add small end-of-run navigation behavior for video clarity. Current behavior includes a slow scroll back to the top after extraction so the recording ends with the surrounding post context visible.
 
 ## Design rule for new scrapers
 

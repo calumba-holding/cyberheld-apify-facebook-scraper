@@ -9,7 +9,7 @@ Current plugin support:
 - `instagram`
   - scraper: `post-engagement`
 
-The CLI reuses a persistent Chrome profile per target, always prints JSON to stdout, and can optionally record browser video via Playwright while scraping.
+The CLI reuses a persistent Chrome profile per target, always prints JSON to stdout, and records browser video via Playwright by default while scraping.
 
 ## Project structure
 
@@ -29,7 +29,7 @@ src/
 - parallel scraping with `--concurrency`
 - strict JSON output to stdout
 - optional `--output-file`
-- optional browser-only video capture
+- browser-only video capture enabled by default
 - strict linting via `npm run lint`
 
 ## Requirements
@@ -129,7 +129,7 @@ The `comment-reactions` scraper:
 - finds the linked target comment
 - extracts all reactions for that comment only
 - does not scrape post reactions
-- slowly scrolls back to the top at the end when `--screen-video` is enabled so the video shows the post context
+- slowly scrolls back to the top at the end so the video shows the post context
 - fails the result if the target comment cannot be found
 
 ## Scrape multiple URLs in parallel
@@ -144,16 +144,25 @@ node dist/main.js \
   --concurrency 3
 ```
 
-## Record browser video and save JSON
+## Save JSON while keeping the default browser video
 
 ```bash
 node dist/main.js \
   --target facebook \
   --scraper post-engagement \
   --target-url "https://www.facebook.com/..." \
-  --screen-video \
   --output-file ./out/facebook-post.json \
   --verbose
+```
+
+## Disable browser video for one run
+
+```bash
+node dist/main.js \
+  --target facebook \
+  --scraper post-engagement \
+  --target-url "https://www.facebook.com/..." \
+  --no-screen-video
 ```
 
 ## Output behavior
@@ -162,6 +171,9 @@ node dist/main.js \
 - `stderr`: logs and errors
 - `--output-file <path>`: also writes the JSON to disk using the run-scoped filename `<run-id>_<basename>`
 - browser video:
+  - enabled by default for browser-based scrapers
+  - disable per run with `--no-screen-video`
+  - disable via environment with `SCRAPE_SCREEN_VIDEO=false`
   - at most one final `.webm` artifact is kept per scrape run
   - saved next to the output JSON when `--output-file` is set
   - otherwise saved under the temp artifact directory for that run
