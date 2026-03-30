@@ -4,6 +4,7 @@ import { launchPersistentChromeContext } from '../common/persistent-browser.js';
 import { slowlyScrollToTop } from '../common/video-context.js';
 import type { LaunchBrowserOptions, ProfileLoginOptions, RunScrapeOptions } from '../common/types.js';
 import { POST_ENGAGEMENT_SCRAPER, scrapePostEngagement } from './scrapers/post-engagement/index.js';
+import { PROFILE_SCRAPER, scrapeProfile } from './scrapers/profile-scraper/index.js';
 import type { InstagramPlugin, InstagramScrapeResult } from './types.js';
 import { getLoginUrl, getProfileDir } from './profile.js';
 
@@ -32,9 +33,14 @@ const runScrape = async (
 
     try {
         await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: options.requestTimeoutSecs * 1000 });
-        if (scraper !== POST_ENGAGEMENT_SCRAPER) throw new Error(`Unsupported Instagram scraper: ${scraper}`);
-
-        const result = await scrapePostEngagement(page, targetUrl, page.url(), options.waitAfterNavigationMs);
+        let result: InstagramScrapeResult;
+        if (scraper === POST_ENGAGEMENT_SCRAPER) {
+            result = await scrapePostEngagement(page, targetUrl, page.url(), options.waitAfterNavigationMs);
+        } else if (scraper === PROFILE_SCRAPER) {
+            result = await scrapeProfile(page, targetUrl, page.url(), options);
+        } else {
+            throw new Error(`Unsupported Instagram scraper: ${scraper}`);
+        }
         if (options.screenVideo) await slowlyScrollToTop(page);
         await page.close().catch(() => undefined);
         return result;
@@ -46,7 +52,7 @@ const runScrape = async (
 
 export const instagramPlugin: InstagramPlugin = {
     target: 'instagram',
-    scrapers: [POST_ENGAGEMENT_SCRAPER],
+    scrapers: [POST_ENGAGEMENT_SCRAPER, PROFILE_SCRAPER],
     getProfileDir,
     launchPersistentBrowser,
     openProfileLoginBrowser,

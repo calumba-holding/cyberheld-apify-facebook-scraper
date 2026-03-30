@@ -26,12 +26,13 @@ describe('registry', () => {
 
     it('returns the instagram plugin when the target is instagram', () => {
         expect(getTargetPlugin('instagram').target).toBe('instagram');
-        expect(getTargetPlugin('instagram').scrapers).toEqual(['post-engagement']);
+        expect(getTargetPlugin('instagram').scrapers).toEqual(['post-engagement', 'profile-scraper']);
     });
 
     it('returns true when the scraper is supported for the target', () => {
         expect(isSupportedScraperForTarget('facebook', 'post-engagement')).toBe(true);
         expect(isSupportedScraperForTarget('facebook', 'comment-reactions')).toBe(true);
         expect(isSupportedScraperForTarget('instagram', 'post-engagement')).toBe(true);
+        expect(isSupportedScraperForTarget('instagram', 'profile-scraper')).toBe(true);
     });
 });

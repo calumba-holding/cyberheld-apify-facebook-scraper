@@ -44,18 +44,31 @@ All scrape runs emit one JSON object to stdout.
     browser: 'persistent-chrome-profile';
     error?: string;
   };
-  completeness: {
+  completeness?: {
     allCommentsFilterApplied: boolean;
     commentsExtracted: boolean;
     postReactionsExtracted: boolean;
   };
-  post: {
+  post?: {
     url: string;
     content?: string;
     reactionSummary: { total: number };
     reactions: ReactionUser[];
   };
-  comments: ScrapedComment[];
+  comments?: ScrapedComment[];
+  profile?: {
+    url: string;
+    username?: string;
+    displayName?: string;
+    bio?: string;
+    profilePictureUrl?: string;
+    externalLinks: string[];
+    counts: { posts?: number; followers?: number; following?: number };
+    indicators: { verified: boolean; private: boolean };
+  };
+  artifacts?: {
+    screenshots?: { localPath: string }[];
+  };
 }
 ```
 
@@ -95,6 +108,8 @@ The `post-engagement` scraper returns comments without `comments[].reactions`; i
 
 For Instagram `post-engagement`, `PARTIAL` is expected when visible comment expansion still remains actionable after the crawl budget or when the likes dialog cannot be opened for user-level extraction.
 
+For Instagram `profile-scraper`, `SUCCEEDED` means usable profile metadata was extracted and at least one screenshot artifact was captured. `PARTIAL` means metadata was extracted but screenshot capture did not complete.
+
 ## Completeness booleans
 
 The `completeness` flags describe whether the scraper completed its intended extraction steps, not whether the resulting arrays are non-empty.
@@ -124,6 +139,15 @@ Post-level reactions belong in:
 - `post.reactionSummary.total`
 
 Do not mix comment reactions into the post reaction list.
+
+## Profile-scraper rule
+
+Profile scrapes populate `profile` and may populate `artifacts.screenshots`.
+
+They do not need to populate:
+- `post`
+- `comments`
+- `completeness`
 
 ## Backward-compatibility rule
 

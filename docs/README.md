@@ -42,6 +42,7 @@ If you are adding or changing a target or scraper, read these files first:
 - `docs/scrapers/facebook-post-engagement.md` — current scraper as the reference example
 - `docs/scrapers/facebook-comment-reactions.md` — single-comment reaction scraper behavior and contract
 - `docs/scrapers/instagram-post-engagement.md` — Instagram post engagement scraper behavior and contract
+- `docs/scrapers/instagram-profile-scraper.md` — Instagram profile scraper behavior and contract
 
 ### Automation docs
 

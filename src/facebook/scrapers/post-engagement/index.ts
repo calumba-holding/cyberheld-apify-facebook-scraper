@@ -32,6 +32,7 @@ export const scrapePostEngagement = async (
     const reactionResult = await extractAllReactions(page, scope);
 
     return {
+        kind: 'engagement',
         inputUrl,
         finalUrl,
         scrapedAt: new Date().toISOString(),
