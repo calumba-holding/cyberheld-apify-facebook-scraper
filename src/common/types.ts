@@ -3,6 +3,10 @@ import type { BrowserContext } from 'playwright';
 export type SupportedTarget = 'facebook' | 'instagram';
 
 export interface RunScrapeOptions {
+    runId: string;
+    itemIndex: number;
+    outputFile?: string;
+    artifactRootDir: string;
     waitAfterNavigationMs: number;
     requestTimeoutSecs: number;
     screenVideo?: boolean;
@@ -23,6 +27,7 @@ export interface BaseScrapeResult {
     inputUrl: string;
     finalUrl: string;
     scrapedAt: string;
+    status?: 'SUCCEEDED' | 'PARTIAL';
 }
 
 export interface ReactionUser {
@@ -58,7 +63,12 @@ export interface ScrapedComment {
     reactions?: CommentReactionDetails;
 }
 
+export interface ScreenshotArtifact {
+    localPath: string;
+}
+
 export interface EngagementScrapeResult extends BaseScrapeResult {
+    kind: 'engagement';
     reactionCount: number;
     commentCount: number;
     commentsComplete?: boolean;
@@ -67,10 +77,39 @@ export interface EngagementScrapeResult extends BaseScrapeResult {
     postContent?: string;
     reactions: ReactionUser[];
     comments: ScrapedComment[];
-    status?: 'SUCCEEDED' | 'PARTIAL';
 }
 
-export interface TargetPlugin<TResult extends BaseScrapeResult = EngagementScrapeResult> {
+export interface ProfileCounts {
+    posts?: number;
+    followers?: number;
+    following?: number;
+}
+
+export interface ProfileIndicators {
+    verified: boolean;
+    private: boolean;
+}
+
+export interface ProfileData {
+    url: string;
+    username?: string;
+    displayName?: string;
+    bio?: string;
+    profilePictureUrl?: string;
+    externalLinks: string[];
+    counts: ProfileCounts;
+    indicators: ProfileIndicators;
+}
+
+export interface ProfileScrapeResult extends BaseScrapeResult {
+    kind: 'profile';
+    profile: ProfileData;
+    screenshots: ScreenshotArtifact[];
+}
+
+export type ScrapeResult = EngagementScrapeResult | ProfileScrapeResult;
+
+export interface TargetPlugin<TResult extends BaseScrapeResult = ScrapeResult> {
     target: SupportedTarget;
     scrapers: readonly string[];
     getProfileDir: (profileRootDir?: string) => string;

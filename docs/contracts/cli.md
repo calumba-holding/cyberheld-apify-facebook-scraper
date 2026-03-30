@@ -23,6 +23,7 @@ node dist/main.js [scrape] profile path --target <target>
 - scraper: `comment-reactions`
 - target: `instagram`
 - scraper: `post-engagement`
+- scraper: `profile-scraper`
 
 ## Flag rules
 

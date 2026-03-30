@@ -1,4 +1,12 @@
-import type { EngagementScrapeResult, ReactionUser, ScrapedComment, SupportedTarget } from './types.js';
+import type {
+    EngagementScrapeResult,
+    ProfileData,
+    ReactionUser,
+    ScreenshotArtifact,
+    ScrapeResult,
+    ScrapedComment,
+    SupportedTarget,
+} from './types.js';
 
 export type VideoArtifact = {
     present: boolean;
@@ -15,18 +23,22 @@ export type ScrapeItemOutput = {
         browser: 'persistent-chrome-profile';
         error?: string;
     };
-    completeness: {
+    completeness?: {
         allCommentsFilterApplied: boolean;
         commentsExtracted: boolean;
         postReactionsExtracted: boolean;
     };
-    post: {
+    post?: {
         url: string;
         content?: string;
         reactionSummary: { total: number };
         reactions: ReactionUser[];
     };
-    comments: ScrapedComment[];
+    comments?: ScrapedComment[];
+    profile?: ProfileData;
+    artifacts?: {
+        screenshots?: ScreenshotArtifact[];
+    };
 };
 
 export type ScrapeRunOutput = {
@@ -61,8 +73,11 @@ const resolveCommentVisibilityComplete = (result: EngagementScrapeResult): boole
     return result.commentVisibilityComplete ?? resolveCommentsComplete(result);
 };
 
-const toStatus = (result: EngagementScrapeResult): 'SUCCEEDED' | 'PARTIAL' => {
+const toStatus = (result: ScrapeResult): 'SUCCEEDED' | 'PARTIAL' => {
     if (result.status) return result.status;
+    if (result.kind === 'profile') {
+        return result.screenshots.length > 0 ? 'SUCCEEDED' : 'PARTIAL';
+    }
 
     const commentsComplete = resolveCommentsComplete(result);
     const postReactionsComplete = resolvePostReactionsComplete(result);
@@ -71,30 +86,44 @@ const toStatus = (result: EngagementScrapeResult): 'SUCCEEDED' | 'PARTIAL' => {
 };
 
 export const buildSuccessOutput = (
-    result: EngagementScrapeResult,
+    result: ScrapeResult,
     jobId: string,
-): ScrapeItemOutput => ({
-    input: { targetUrl: result.inputUrl },
-    scrape: {
-        jobId,
-        status: toStatus(result),
-        scrapedAt: result.scrapedAt,
-        runtime: 'cli',
-        browser: 'persistent-chrome-profile',
-    },
-    completeness: {
-        allCommentsFilterApplied: resolveCommentVisibilityComplete(result),
-        commentsExtracted: resolveCommentsComplete(result),
-        postReactionsExtracted: resolvePostReactionsComplete(result),
-    },
-    post: {
-        url: result.finalUrl,
-        content: result.postContent,
-        reactionSummary: { total: result.reactionCount },
-        reactions: result.reactions,
-    },
-    comments: result.comments,
-});
+): ScrapeItemOutput => {
+    const baseOutput = {
+        input: { targetUrl: result.inputUrl },
+        scrape: {
+            jobId,
+            status: toStatus(result),
+            scrapedAt: result.scrapedAt,
+            runtime: 'cli' as const,
+            browser: 'persistent-chrome-profile' as const,
+        },
+    };
+
+    if (result.kind === 'profile') {
+        return {
+            ...baseOutput,
+            profile: result.profile,
+            artifacts: result.screenshots.length > 0 ? { screenshots: result.screenshots } : undefined,
+        };
+    }
+
+    return {
+        ...baseOutput,
+        completeness: {
+            allCommentsFilterApplied: resolveCommentVisibilityComplete(result),
+            commentsExtracted: resolveCommentsComplete(result),
+            postReactionsExtracted: resolvePostReactionsComplete(result),
+        },
+        post: {
+            url: result.finalUrl,
+            content: result.postContent,
+            reactionSummary: { total: result.reactionCount },
+            reactions: result.reactions,
+        },
+        comments: result.comments,
+    };
+};
 
 export const buildFailedOutput = (
     inputUrl: string,
@@ -121,6 +150,7 @@ export const buildFailedOutput = (
         reactions: [],
     },
     comments: [],
+    artifacts: { screenshots: [] },
 });
 
 export const buildRunOutput = (

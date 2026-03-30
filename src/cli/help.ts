@@ -51,6 +51,7 @@ Examples:
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
   scrape --target facebook --scraper comment-reactions --target-url "https://www.facebook.com/...?...&comment_id=123456"
   scrape --target instagram --scraper post-engagement --target-url "https://www.instagram.com/p/..."
+  scrape --target instagram --scraper profile-scraper --target-url "https://www.instagram.com/example/"
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/a" --target-url "https://www.facebook.com/b" --concurrency 2
   scrape profile login --target facebook
   scrape profile login --target instagram

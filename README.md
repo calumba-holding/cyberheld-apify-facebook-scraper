@@ -8,6 +8,7 @@ Current plugin support:
   - scraper: `comment-reactions`
 - `instagram`
   - scraper: `post-engagement`
+  - scraper: `profile-scraper`
 
 The CLI reuses a persistent Chrome profile per target, always prints JSON to stdout, and records browser video via Playwright by default while scraping.
 
@@ -115,6 +116,13 @@ node dist/main.js \
   --target-url "https://www.instagram.com/p/..."
 ```
 
+```bash
+node dist/main.js \
+  --target instagram \
+  --scraper profile-scraper \
+  --target-url "https://www.instagram.com/example_profile/"
+```
+
 ## Scrape comment reactions for one target comment
 
 ```bash
@@ -203,6 +211,19 @@ The Instagram plugin currently extracts:
 - ISO timestamps for comments when available
 
 The Instagram `post-engagement` scraper reports `PARTIAL` when comment expansion still appears actionable after its crawl budget or when the likes dialog cannot be opened for user-level extraction.
+
+## Instagram profile-scraper output
+
+The Instagram profile scraper currently extracts:
+- canonical profile URL
+- username / handle
+- display name when visible
+- bio when visible
+- profile picture URL when visible
+- post / follower / following counts when visible
+- verified / private indicators when visible
+- visible external links
+- at least one screenshot artifact path when capture succeeds
 
 ## Linting
 

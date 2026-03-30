@@ -55,10 +55,14 @@ const runScrapeCommand = async (options: RunCliOptions): Promise<ScrapeRunOutput
     let results: ScrapeItemOutput[] = [];
 
     try {
-        results = await mapLimit(options.targetUrls, options.concurrency, async (targetUrl): Promise<ScrapeItemOutput> => {
+        results = await mapLimit(options.targetUrls, options.concurrency, async (targetUrl, itemIndex): Promise<ScrapeItemOutput> => {
             try {
                 log.info(`Scraping ${targetUrl}`);
-                const scrapeResult = await plugin.runScrape(context, options.scraper, targetUrl, options);
+                const scrapeResult = await plugin.runScrape(context, options.scraper, targetUrl, {
+                    ...options,
+                    runId,
+                    itemIndex,
+                });
                 return buildSuccessOutput(scrapeResult, runId);
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);

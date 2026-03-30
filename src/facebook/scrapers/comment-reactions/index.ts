@@ -36,6 +36,7 @@ export const scrapeCommentReactions = async (
     if (reactions) match.record.reactions = reactions;
 
     return {
+        kind: 'engagement',
         inputUrl,
         finalUrl,
         scrapedAt: new Date().toISOString(),

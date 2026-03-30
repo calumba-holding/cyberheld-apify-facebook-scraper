@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { buildFailedOutput, buildRunOutput, buildSuccessOutput } from '../../src/facebook/output-item.js';
 import type { FacebookScrapeResult } from '../../src/facebook/types.js';
+import type { ProfileScrapeResult } from '../../src/common/types.js';
 
 const buildResult = (overrides: Partial<FacebookScrapeResult> = {}): FacebookScrapeResult => ({
+    kind: 'engagement',
     inputUrl: 'https://www.facebook.com/example/posts/123',
     finalUrl: 'https://www.facebook.com/example/posts/123',
     scrapedAt: '2026-03-22T10:00:00.000Z',
@@ -81,6 +83,39 @@ describe('buildSuccessOutput', () => {
             commentsExtracted: true,
             postReactionsExtracted: true,
         });
+    });
+});
+
+describe('buildSuccessOutput for profile scrapes', () => {
+    it('returns profile metadata and screenshot artifacts', () => {
+        const output = buildSuccessOutput({
+            kind: 'profile',
+            inputUrl: 'https://www.instagram.com/example/',
+            finalUrl: 'https://www.instagram.com/example/',
+            scrapedAt: '2026-03-22T10:00:00.000Z',
+            profile: {
+                url: 'https://www.instagram.com/example/',
+                username: 'example',
+                displayName: 'Example Account',
+                bio: 'Bio text',
+                profilePictureUrl: 'https://cdn.example/avatar.jpg',
+                externalLinks: ['https://example.com'],
+                counts: { posts: 12, followers: 3400, following: 120 },
+                indicators: { verified: true, private: false },
+            },
+            screenshots: [{ localPath: '/tmp/run-profile-01.png' }],
+        } satisfies ProfileScrapeResult, 'job-profile');
+
+        expect(output.scrape.status).toBe('SUCCEEDED');
+        expect(output.profile).toMatchObject({
+            username: 'example',
+            displayName: 'Example Account',
+            counts: { posts: 12, followers: 3400, following: 120 },
+        });
+        expect(output.artifacts?.screenshots).toEqual([{ localPath: '/tmp/run-profile-01.png' }]);
+        expect(output.completeness).toBeUndefined();
+        expect(output.post).toBeUndefined();
+        expect(output.comments).toBeUndefined();
     });
 });
 

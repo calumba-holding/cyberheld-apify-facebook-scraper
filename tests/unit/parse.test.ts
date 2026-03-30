@@ -121,6 +121,24 @@ describe('parseCliArgs', () => {
         }
     });
 
+    it('accepts the instagram profile-scraper', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'instagram',
+            '--scraper',
+            'profile-scraper',
+            '--target-url',
+            'https://www.instagram.com/example-profile/',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.target).toBe('instagram');
+            expect(parsed.options.scraper).toBe('profile-scraper');
+            expect(parsed.options.targetUrls).toEqual(['https://www.instagram.com/example-profile/']);
+        }
+    });
+
     it('returns run options from environment defaults when optional flags are omitted', () => {
         process.env.SCRAPE_CONCURRENCY = '3';
         process.env.SCRAPE_SCREEN_VIDEO = 'true';

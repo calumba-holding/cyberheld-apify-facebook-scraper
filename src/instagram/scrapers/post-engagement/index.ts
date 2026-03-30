@@ -21,6 +21,7 @@ export const scrapePostEngagement = async (
     const reactionsResult = await extractInstagramReactions(page);
 
     return {
+        kind: 'engagement',
         inputUrl,
         finalUrl: post.finalUrl,
         scrapedAt: new Date().toISOString(),
