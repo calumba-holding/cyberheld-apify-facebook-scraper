@@ -21,6 +21,8 @@ node dist/main.js [scrape] profile path --target <target>
 - target: `facebook`
 - scraper: `post-engagement`
 - scraper: `comment-reactions`
+- target: `instagram`
+- scraper: `post-engagement`
 
 ## Flag rules
 

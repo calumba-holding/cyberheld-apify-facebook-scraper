@@ -6,6 +6,8 @@ Current plugin support:
 - `facebook`
   - scraper: `post-engagement`
   - scraper: `comment-reactions`
+- `instagram`
+  - scraper: `post-engagement`
 
 The CLI reuses a persistent Chrome profile per target, always prints JSON to stdout, and can optionally record browser video via Playwright while scraping.
 
@@ -16,6 +18,7 @@ src/
   cli/        CLI parsing, help text, and runtime orchestration
   common/     shared runtime helpers and common types
   facebook/   Facebook-specific plugin, extractors, and types
+  instagram/  Instagram-specific plugin, extractors, and types
 ```
 
 ## Features
@@ -55,6 +58,7 @@ Log into Facebook once with the persistent scraper profile before scraping:
 
 ```bash
 node dist/main.js profile login --target facebook
+node dist/main.js profile login --target instagram
 ```
 
 ## CLI overview
@@ -69,6 +73,7 @@ When running the compiled entrypoint directly, both forms are accepted:
 
 ```bash
 node dist/main.js --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
+node dist/main.js --target instagram --scraper post-engagement --target-url "https://www.instagram.com/p/..."
 node dist/main.js scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
 ```
 
@@ -78,12 +83,14 @@ Open the persistent target profile and log in manually:
 
 ```bash
 node dist/main.js profile login --target facebook
+node dist/main.js profile login --target instagram
 ```
 
 Show the resolved profile path:
 
 ```bash
 node dist/main.js profile path --target facebook
+node dist/main.js profile path --target instagram
 ```
 
 Default profile root:
@@ -99,6 +106,13 @@ node dist/main.js \
   --target facebook \
   --scraper post-engagement \
   --target-url "https://www.facebook.com/..."
+```
+
+```bash
+node dist/main.js \
+  --target instagram \
+  --scraper post-engagement \
+  --target-url "https://www.instagram.com/p/..."
 ```
 
 ## Scrape comment reactions for one target comment
@@ -161,7 +175,22 @@ The Facebook plugin currently extracts:
 - post reactions with per-user reaction type
 - comments and replies
 - UTC timestamps for visible comments/replies
-- per-comment / per-reply reactions when available
+
+The `post-engagement` scraper does not enrich comments with comment-level reactions. Use `comment-reactions` when you need reactions for one specific comment.
+
+A `post-engagement` result may still be marked successful when the post has zero visible comments. For zero post reactions, an empty `post.reactions` array only stays successful when the scraper can positively confirm an explicit zero-reaction state; otherwise the item remains `PARTIAL`.
+
+## Instagram post-engagement output
+
+The Instagram plugin currently extracts:
+- canonical post URL
+- post caption when available from page metadata
+- visible like/comment totals from labeled UI counts or page metadata
+- liker profiles when the logged-in profile can open the likes dialog
+- visible comments with permalink-derived ids
+- ISO timestamps for comments when available
+
+The Instagram `post-engagement` scraper reports `PARTIAL` when comment expansion still appears actionable after its crawl budget or when the likes dialog cannot be opened for user-level extraction.
 
 ## Linting
 

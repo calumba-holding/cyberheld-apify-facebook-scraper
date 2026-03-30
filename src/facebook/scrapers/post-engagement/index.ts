@@ -29,17 +29,19 @@ export const scrapePostEngagement = async (
         : initialComments;
 
     log.info(`Page URL before reaction scrape: ${page.url()}`);
-    const reactions = await extractAllReactions(page, scope);
+    const reactionResult = await extractAllReactions(page, scope);
 
     return {
         inputUrl,
         finalUrl,
         scrapedAt: new Date().toISOString(),
-        reactionCount: reactions.length,
+        reactionCount: reactionResult.users.length,
         commentCount: comments.length,
-        allCommentsFilterApplied: commentFilter.applied,
+        commentsComplete: true,
+        postReactionsComplete: reactionResult.extracted,
+        commentVisibilityComplete: commentFilter.applied,
         postContent,
-        reactions,
+        reactions: reactionResult.users,
         comments,
     };
 };

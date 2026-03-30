@@ -34,12 +34,14 @@ If you are adding or changing a target or scraper, read these files first:
 ### Target docs
 
 - `docs/targets/facebook.md` — Facebook-specific URL, selector, and behavior notes
+- `docs/targets/instagram.md` — Instagram-specific URL, selector, and engagement notes
 
 ### Scraper docs
 
 - `docs/scrapers/add-a-scraper.md` — required workflow for new scrapers
 - `docs/scrapers/facebook-post-engagement.md` — current scraper as the reference example
 - `docs/scrapers/facebook-comment-reactions.md` — single-comment reaction scraper behavior and contract
+- `docs/scrapers/instagram-post-engagement.md` — Instagram post engagement scraper behavior and contract
 
 ### Automation docs
 
