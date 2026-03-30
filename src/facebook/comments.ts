@@ -3,7 +3,6 @@ import type { Locator, Page } from 'playwright';
 
 import { enrichCommentTimestamps } from './comment-timestamps.js';
 import { deduplicateComments, extractCommentRecords } from './comment-extraction.js';
-import { attachCommentReactions } from './comment-reactions.js';
 import type { ScrapedComment } from './types.js';
 import { clickCommentExpansionButtons, ensureCommentsAreVisible, getCommentLocators } from './shared/comments-ui.js';
 
@@ -49,8 +48,7 @@ export const extractAllComments = async (page: Page, scope: Locator = page.locat
         || comment.timestamp !== ''
     )));
     await enrichCommentTimestamps(page, comments, uniqueComments);
-    const hydratedComments = await attachCommentReactions(page, comments, uniqueComments);
 
-    log.info(`Extracted ${hydratedComments.length} comments.`);
-    return hydratedComments;
+    log.info(`Extracted ${uniqueComments.length} comments.`);
+    return uniqueComments;
 };

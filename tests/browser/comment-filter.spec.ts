@@ -38,4 +38,22 @@ test.describe('switchToAllComments', () => {
             state: 'not_available',
         });
     });
+
+    test('returns not_available when neither a filter button nor visible comments are present', async ({ page }) => {
+        await page.setContent(`
+            <style>
+                h2, div, span { display: block; }
+            </style>
+            <h2>Comments</h2>
+            <div>No comments yet.</div>
+        `);
+
+        const result = await switchToAllComments(page, page.locator('body'));
+
+        expect(result).toEqual({
+            applied: true,
+            shouldReloadComments: false,
+            state: 'not_available',
+        });
+    });
 });

@@ -7,6 +7,11 @@ import { normalizeProfileUrl } from './reaction-helpers.js';
 import { PROFILE_PICTURE_SELECTOR } from './selectors.js';
 import type { ReactionUser } from './types.js';
 
+export interface PostReactionExtractionResult {
+    users: ReactionUser[];
+    extracted: boolean;
+}
+
 type ReactionBreakdown = {
     reaction: string;
     count: number;
@@ -18,11 +23,13 @@ type ReactionButtonCandidate = ReactionBreakdown & {
     y: number;
 };
 
-const parseReactionButton = (ariaLabel: string): ReactionBreakdown | null => {
+const parseReactionButton = (ariaLabel: string, allowZeroCount = false): ReactionBreakdown | null => {
     for (const reaction of REACTION_LABELS) {
         if (!ariaLabel.startsWith(`${reaction}:`)) continue;
         const count = Number.parseInt(ariaLabel.slice(reaction.length + 1).trim().split(' ')[0] || '0', 10);
-        if (Number.isFinite(count) && count > 0) return { reaction, count };
+        if (!Number.isFinite(count) || count < 0) return null;
+        if (count > 0 || (allowZeroCount && count === 0)) return { reaction, count };
+        return null;
     }
     return null;
 };
@@ -37,7 +44,10 @@ const parseReactionTab = (ariaLabel: string): ReactionBreakdown | null => {
     return { reaction, count };
 };
 
-const collectReactionButtons = async (scope: Locator): Promise<ReactionButtonCandidate[]> => {
+const collectReactionButtons = async (
+    scope: Locator,
+    options: { allowZeroCount?: boolean } = {},
+): Promise<ReactionButtonCandidate[]> => {
     const buttons = scope.locator('[role="button"][aria-label]');
     const candidates: ReactionButtonCandidate[] = [];
 
@@ -46,7 +56,7 @@ const collectReactionButtons = async (scope: Locator): Promise<ReactionButtonCan
         if (!(await button.isVisible().catch(() => false))) continue;
 
         const ariaLabel = (await button.getAttribute('aria-label').catch(() => '')) || '';
-        const parsed = parseReactionButton(ariaLabel);
+        const parsed = parseReactionButton(ariaLabel, options.allowZeroCount);
         if (!parsed) continue;
 
         const box = await button.boundingBox();
@@ -70,12 +80,19 @@ const collectReactionTabs = async (modal: Locator): Promise<ReactionBreakdown[]>
 const collectUsersFromCurrentTab = async (modal: Locator, reaction: string): Promise<ReactionUser[]> => {
     const links = modal.locator(PROFILE_PICTURE_SELECTOR);
     return links.evaluateAll((nodes, currentReaction) => {
+        const isVisible = (element: Element): element is HTMLElement => {
+            if (!(element instanceof HTMLElement)) return false;
+            const style = window.getComputedStyle(element);
+            const rect = element.getBoundingClientRect();
+            return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        };
+
         const results: ReactionUser[] = [];
         for (const node of nodes) {
-            const anchor = node as HTMLAnchorElement;
-            const ariaLabel = anchor.getAttribute('aria-label') || '';
+            if (!(node instanceof HTMLAnchorElement) || !isVisible(node)) continue;
+            const ariaLabel = node.getAttribute('aria-label') || '';
             const name = ariaLabel.replace('Profile picture of ', '').trim();
-            if (name && anchor.href) results.push({ name, profile_url: anchor.href, reaction: currentReaction });
+            if (name && node.href) results.push({ name, profile_url: node.href, reaction: currentReaction });
         }
         return results;
     }, reaction);
@@ -131,13 +148,22 @@ const extractUsersFromModal = async (page: Page, modal: Locator, fallbackReactio
     return users;
 };
 
-export const extractAllReactions = async (page: Page, scope: Locator = page.locator('body')): Promise<ReactionUser[]> => {
+export const extractAllReactions = async (
+    page: Page,
+    scope: Locator = page.locator('body'),
+): Promise<PostReactionExtractionResult> => {
     log.info('Hunting for post reactions inside the target post only...');
 
     const candidates = await collectReactionButtons(scope);
     if (!candidates.length) {
-        log.warning('Could not find a post reaction entry inside the target post.');
-        return [];
+        const zeroReactionCandidates = await collectReactionButtons(scope, { allowZeroCount: true });
+        if (zeroReactionCandidates.length) {
+            log.info('The target post shows an explicit zero-reaction entry. Treating post reaction extraction as complete.');
+            return { users: [], extracted: true };
+        }
+
+        log.warning('Could not confirm a visible post reaction entry inside the target post. Leaving post reaction extraction as incomplete.');
+        return { users: [], extracted: false };
     }
 
     const primary = candidates[0];
@@ -145,13 +171,13 @@ export const extractAllReactions = async (page: Page, scope: Locator = page.loca
     const modal = await openPostReactionModal(page, button);
     if (!modal) {
         log.warning('Could not open the post reactions modal.');
-        return [];
+        return { users: [], extracted: false };
     }
 
     try {
         const reactions = await extractUsersFromModal(page, modal, primary.reaction);
         log.info(`Done. Extracted ${reactions.length} post reaction users.`);
-        return reactions;
+        return { users: reactions, extracted: true };
     } finally {
         await closePostReactionModal(page, modal);
     }
