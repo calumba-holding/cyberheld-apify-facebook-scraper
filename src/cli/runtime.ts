@@ -5,9 +5,8 @@ import { createInterface } from 'node:readline/promises';
 import { stdin as input } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { log, setVerboseLogging } from '../common/logger.js';
-import { buildFailedOutput, buildRunOutput, buildSuccessOutput, type ScrapeItemOutput, type ScrapeRunOutput, type VideoArtifact } from '../facebook/output-item.js';
+import { buildFailedOutput, buildRunOutput, buildSuccessOutput, type ScrapeItemOutput, type ScrapeRunOutput, type VideoArtifact } from '../common/output-item.js';
 import { getTargetPlugin } from '../registry.js';
-import type { FacebookScrapeResult } from '../facebook/types.js';
 import type { TargetPlugin } from '../common/types.js';
 import { helpText } from './parse.js';
 import type { ParsedCli, ProfileStatusOutput, RunCliOptions } from './types.js';
@@ -44,8 +43,7 @@ const mapLimit = async <T, R>(items: T[], limit: number, worker: (item: T, index
 const runScrapeCommand = async (options: RunCliOptions): Promise<ScrapeRunOutput> => {
     const runId = randomUUID();
     const startedAt = new Date().toISOString();
-    // TODO: generalize when a second target is added
-    const plugin = getTargetPlugin(options.target) as TargetPlugin<FacebookScrapeResult>;
+    const plugin = getTargetPlugin(options.target) as TargetPlugin;
     const profileDir = plugin.getProfileDir(options.profileRootDir);
     let videoArtifact: VideoArtifact = { present: false };
     const recordVideoDir = await prepareRawVideoDir(options, runId);

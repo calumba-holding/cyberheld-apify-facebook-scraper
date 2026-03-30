@@ -63,7 +63,7 @@ All scrape runs emit one JSON object to stdout.
 
 ### `SUCCEEDED`
 
-Use when the scraper met its intended completeness rules for that scraper.
+Use when the scraper met its intended completeness rules for that scraper. For `post-engagement`, that can still be `SUCCEEDED` when `comments` is empty because the target post has no visible comments. An empty `post.reactions` array only counts as complete when the scraper can positively confirm a zero-reaction state for the target post.
 
 ### `PARTIAL`
 
@@ -90,6 +90,21 @@ Preferred approach:
 ## Scraper-specific status note
 
 The `comment-reactions` scraper may report `SUCCEEDED` while leaving post reactions empty, because its success condition is finding the target comment and extracting that comment's reactions rather than scraping the post reaction list.
+
+The `post-engagement` scraper returns comments without `comments[].reactions`; it extracts post reactions only.
+
+For Instagram `post-engagement`, `PARTIAL` is expected when visible comment expansion still remains actionable after the crawl budget or when the likes dialog cannot be opened for user-level extraction.
+
+## Completeness booleans
+
+The `completeness` flags describe whether the scraper completed its intended extraction steps, not whether the resulting arrays are non-empty.
+
+`allCommentsFilterApplied` is a legacy output field name kept for backward compatibility. For non-Facebook targets, read it as "comment visibility completeness" rather than literally "a comments filter was applied".
+
+Examples:
+- `commentsExtracted: true` with `comments: []` means the post had no visible comments or the scraper confirmed the visible comment state successfully.
+- `postReactionsExtracted: true` with `post.reactionSummary.total: 0` means the scraper completed post-reaction extraction and positively confirmed that the target post shows zero visible reactions.
+- for Instagram, `allCommentsFilterApplied: false` means the scraper could still see actionable comment expansion controls after its bounded crawl loop, even though partial comment data may already be present.
 
 ## Comment reaction rule
 

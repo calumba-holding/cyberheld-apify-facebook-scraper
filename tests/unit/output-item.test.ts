@@ -9,7 +9,9 @@ const buildResult = (overrides: Partial<FacebookScrapeResult> = {}): FacebookScr
     scrapedAt: '2026-03-22T10:00:00.000Z',
     reactionCount: 2,
     commentCount: 1,
-    allCommentsFilterApplied: true,
+    commentsComplete: true,
+    postReactionsComplete: true,
+    commentVisibilityComplete: true,
     postContent: 'Target post content',
     reactions: [
         { name: 'Ada Lovelace', profile_url: 'https://www.facebook.com/ada', reaction: 'Like' },
@@ -40,8 +42,25 @@ describe('buildSuccessOutput', () => {
         expect(output.comments).toHaveLength(1);
     });
 
-    it('returns PARTIAL when post reactions are missing', () => {
+    it('returns SUCCEEDED when reaction extraction completes but the post has zero visible reactions', () => {
         const output = buildSuccessOutput(buildResult({ reactionCount: 0, reactions: [] }), 'job-2');
+
+        expect(output.scrape.status).toBe('SUCCEEDED');
+        expect(output.completeness.postReactionsExtracted).toBe(true);
+        expect(output.post.reactions).toEqual([]);
+        expect(output.post.reactionSummary.total).toBe(0);
+    });
+
+    it('returns SUCCEEDED when comment extraction completes but the post has zero visible comments', () => {
+        const output = buildSuccessOutput(buildResult({ commentCount: 0, comments: [] }), 'job-3');
+
+        expect(output.scrape.status).toBe('SUCCEEDED');
+        expect(output.completeness.commentsExtracted).toBe(true);
+        expect(output.comments).toEqual([]);
+    });
+
+    it('returns PARTIAL when post reaction extraction did not complete', () => {
+        const output = buildSuccessOutput(buildResult({ reactionCount: 0, reactions: [], postReactionsComplete: false }), 'job-2b');
 
         expect(output.scrape.status).toBe('PARTIAL');
         expect(output.completeness.postReactionsExtracted).toBe(false);
@@ -50,7 +69,7 @@ describe('buildSuccessOutput', () => {
 
     it('respects an explicit scraper status override', () => {
         const output = buildSuccessOutput(buildResult({
-            allCommentsFilterApplied: false,
+            commentVisibilityComplete: false,
             reactionCount: 0,
             reactions: [],
             status: 'SUCCEEDED',
@@ -60,7 +79,7 @@ describe('buildSuccessOutput', () => {
         expect(output.completeness).toEqual({
             allCommentsFilterApplied: false,
             commentsExtracted: true,
-            postReactionsExtracted: false,
+            postReactionsExtracted: true,
         });
     });
 });
@@ -97,8 +116,8 @@ describe('buildRunOutput', () => {
         );
 
         expect(runOutput.summary).toEqual({
-            succeeded: 1,
-            partial: 1,
+            succeeded: 2,
+            partial: 0,
             failed: 1,
         });
         expect(runOutput.run.requestedUrls).toBe(3);

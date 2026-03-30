@@ -10,6 +10,8 @@ Current implementation:
 - target: `facebook`
 - scraper: `post-engagement`
 - scraper: `comment-reactions`
+- target: `instagram`
+- scraper: `post-engagement`
 
 The scraper:
 - reuses a persistent Chrome profile per target
@@ -25,6 +27,7 @@ src/
   cli/          CLI parsing, help text, argument handling, runtime orchestration
   common/       shared runtime helpers and common/shared types
   facebook/     Facebook target plugin, scrapers, selectors, extractors, target types
+  instagram/    Instagram target plugin, scrapers, selectors, extractors, target types
   plugins/      shared plugin helpers such as unsupported-target stubs
   registry.ts   target/plugin registration
 ```
@@ -85,11 +88,17 @@ src/
 npm install
 npm run build
 npm run lint
+npm run test
+npm run test:unit
+npm run test:browser
 
 node dist/main.js --help
 node dist/main.js profile login --target facebook
+node dist/main.js profile login --target instagram
 node dist/main.js profile path --target facebook
+node dist/main.js profile path --target instagram
 node dist/main.js --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
+node dist/main.js --target instagram --scraper post-engagement --target-url "https://www.instagram.com/p/..."
 ```
 
 ## Documentation-first workflow

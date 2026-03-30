@@ -7,6 +7,7 @@ This repository is a local CLI scraper.
 - plugin-oriented architecture
 - persistent Chrome profile per target
 - authenticated Facebook scraping through local Playwright-controlled Chrome
+- authenticated Instagram scraping through local Playwright-controlled Chrome
 - JSON output to stdout
 - optional screen recording via ffmpeg
 
@@ -14,6 +15,7 @@ This repository is a local CLI scraper.
 
 - `facebook` + `post-engagement`
 - `facebook` + `comment-reactions`
+- `instagram` + `post-engagement`
 
 ## Key directories
 
@@ -22,6 +24,7 @@ src/
   cli/          CLI parsing, help text, argument handling, runtime orchestration
   common/       shared runtime helpers and common/shared types
   facebook/     Facebook target plugin, scrapers, selectors, extractors, target types
+  instagram/    Instagram target plugin, scrapers, selectors, extractors, target types
   plugins/      shared plugin helpers such as unsupported-target stubs
   registry.ts   target/plugin registration
 ```
@@ -85,8 +88,11 @@ npm run lint
 
 node dist/main.js --help
 node dist/main.js profile login --target facebook
+node dist/main.js profile login --target instagram
 node dist/main.js profile path --target facebook
+node dist/main.js profile path --target instagram
 node dist/main.js --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
+node dist/main.js --target instagram --scraper post-engagement --target-url "https://www.instagram.com/p/..."
 ```
 
 ## Documentation-first workflow

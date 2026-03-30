@@ -1,42 +1,21 @@
-import { mkdir } from 'node:fs/promises';
-
-import { chromium, type BrowserContext } from 'playwright';
+import type { BrowserContext } from 'playwright';
 
 import { log } from '../common/logger.js';
+import { launchPersistentChromeContext } from '../common/persistent-browser.js';
 import type { LaunchBrowserOptions, ProfileLoginOptions, RunScrapeOptions } from '../common/types.js';
+import { slowlyScrollToTop } from '../common/video-context.js';
 import { COMMENT_REACTIONS_SCRAPER, scrapeCommentReactions } from './scrapers/comment-reactions/index.js';
 import { POST_ENGAGEMENT_SCRAPER, scrapePostEngagement } from './scrapers/post-engagement/index.js';
 import { resolveFacebookPostUrl } from './shared/url.js';
-import { slowlyScrollToTop } from './shared/video-context.js';
 import type { FacebookPlugin, FacebookScrapeResult } from './types.js';
 import { getLoginUrl, getProfileDir } from './profile.js';
 
-const closeExtraBlankPages = async (context: BrowserContext): Promise<void> => {
-    const blankPages = context.pages().filter((page) => page.url() === 'about:blank');
-    await Promise.all(blankPages.map(async (page) => {
-        await page.close().catch(() => undefined);
-    }));
-};
-
-
 const launchPersistentBrowser = async (options: LaunchBrowserOptions): Promise<BrowserContext> => {
-    const profileDir = getProfileDir(options.profileRootDir);
-    await mkdir(profileDir, { recursive: true });
-    const recordingEnabled = Boolean(options.recordVideoDir);
-
-    log.info(`Launching persistent Chrome profile at ${profileDir}`);
-    const context = await chromium.launchPersistentContext(profileDir, {
+    return launchPersistentChromeContext({
+        profileDir: getProfileDir(options.profileRootDir),
         executablePath: options.chromeExecutable,
-        headless: false,
-        viewport: recordingEnabled ? { width: 1280, height: 720 } : null,
-        args: recordingEnabled ? ['--window-size=1280,720', '--disable-gpu'] : undefined,
-        recordVideo: options.recordVideoDir
-            ? { dir: options.recordVideoDir, size: { width: 1280, height: 720 } }
-            : undefined,
+        recordVideoDir: options.recordVideoDir,
     });
-
-    await closeExtraBlankPages(context);
-    return context;
 };
 
 const openProfileLoginBrowser = async (options: ProfileLoginOptions): Promise<BrowserContext> => {
@@ -61,7 +40,7 @@ const runScrape = async (
     };
 
     try {
-        const resolvedPostUrl = await resolveFacebookPostUrl(targetUrl);
+        const resolvedPostUrl = await (resolveFacebookPostUrl as (url: string) => Promise<string>)(targetUrl);
         if (resolvedPostUrl !== targetUrl) log.info(`Resolved shared URL to: ${resolvedPostUrl}`);
 
         await page.goto(resolvedPostUrl, {

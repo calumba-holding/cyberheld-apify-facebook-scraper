@@ -103,6 +103,24 @@ describe('parseCliArgs', () => {
         }
     });
 
+    it('accepts the instagram post-engagement scraper', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'instagram',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.instagram.com/p/example-post/',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.target).toBe('instagram');
+            expect(parsed.options.scraper).toBe('post-engagement');
+            expect(parsed.options.targetUrls).toEqual(['https://www.instagram.com/p/example-post/']);
+        }
+    });
+
     it('returns run options from environment defaults when optional flags are omitted', () => {
         process.env.SCRAPE_CONCURRENCY = '3';
         process.env.SCRAPE_SCREEN_VIDEO = 'true';
@@ -154,11 +172,11 @@ describe('parseCliArgs', () => {
     it('throws an error when target is unsupported', () => {
         expect(() => parseCliArgs([
             '--target',
-            'instagram',
+            'threads',
             '--scraper',
             'post-engagement',
             '--target-url',
-            'https://www.instagram.com/p/abc',
-        ])).toThrowError('--target must be one of: facebook');
+            'https://www.threads.net/@example/post/abc',
+        ])).toThrowError('--target must be one of: facebook, instagram');
     });
 });

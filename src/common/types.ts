@@ -1,6 +1,6 @@
 import type { BrowserContext } from 'playwright';
 
-export type SupportedTarget = 'facebook';
+export type SupportedTarget = 'facebook' | 'instagram';
 
 export interface RunScrapeOptions {
     waitAfterNavigationMs: number;
@@ -25,7 +25,52 @@ export interface BaseScrapeResult {
     scrapedAt: string;
 }
 
-export interface TargetPlugin<TResult extends BaseScrapeResult = BaseScrapeResult> {
+export interface ReactionUser {
+    name: string;
+    profile_url: string;
+    reaction: string;
+}
+
+export interface CommentReactionUser {
+    name: string;
+    profile_url: string;
+    reaction: string;
+}
+
+export interface CommentReactionBreakdown {
+    reaction: string;
+    count: number;
+}
+
+export interface CommentReactionDetails {
+    count: number;
+    label: string;
+    breakdown: CommentReactionBreakdown[];
+    users: CommentReactionUser[];
+}
+
+export interface ScrapedComment {
+    user: string;
+    content: string;
+    timestamp: string;
+    timestampLabel?: string;
+    id: string;
+    reactions?: CommentReactionDetails;
+}
+
+export interface EngagementScrapeResult extends BaseScrapeResult {
+    reactionCount: number;
+    commentCount: number;
+    commentsComplete?: boolean;
+    postReactionsComplete?: boolean;
+    commentVisibilityComplete?: boolean;
+    postContent?: string;
+    reactions: ReactionUser[];
+    comments: ScrapedComment[];
+    status?: 'SUCCEEDED' | 'PARTIAL';
+}
+
+export interface TargetPlugin<TResult extends BaseScrapeResult = EngagementScrapeResult> {
     target: SupportedTarget;
     scrapers: readonly string[];
     getProfileDir: (profileRootDir?: string) => string;
