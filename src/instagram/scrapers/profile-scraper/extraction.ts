@@ -1,6 +1,7 @@
 import type { Page } from 'playwright';
 
 import type { ProfileCounts, ProfileData } from '../../../common/types.js';
+import { parseInstagramCount } from '../../post-extraction.js';
 import { PROFILE_HEADER_SELECTOR } from '../../selectors.js';
 
 const TITLE_WITH_DISPLAY_PATTERN = /^(.*?)\s*\(@([A-Za-z0-9._]+)\)\s*[•-]\s*Instagram/i;
@@ -9,27 +10,15 @@ const META_COUNTS_PATTERN = /([\d.,KMB]+)\s+Followers,\s+([\d.,KMB]+)\s+Followin
 
 const cleanText = (value: string | null | undefined): string => (value || '').replace(/\s+/g, ' ').trim();
 
-const parseCompactCount = (value: string | undefined): number | undefined => {
-    if (!value) return undefined;
-    const normalized = value.replace(/\s+/g, '').replace(/,/g, '').toUpperCase();
-    const match = normalized.match(/^(\d+(?:\.\d+)?)([KMB])?$/);
-    if (!match) return undefined;
-
-    const amount = Number.parseFloat(match[1]);
-    if (!Number.isFinite(amount)) return undefined;
-    const multipliers: Record<string, number> = { K: 1_000, M: 1_000_000, B: 1_000_000_000 };
-    return Math.round(amount * (match[2] ? multipliers[match[2]] ?? 1 : 1));
-};
-
 const parseCountsFromMeta = (description: string | undefined): ProfileCounts => {
     if (!description) return {};
     const match = description.match(META_COUNTS_PATTERN);
     if (!match) return {};
 
     return {
-        followers: parseCompactCount(match[1]),
-        following: parseCompactCount(match[2]),
-        posts: parseCompactCount(match[3]),
+        followers: parseInstagramCount(match[1]),
+        following: parseInstagramCount(match[2]),
+        posts: parseInstagramCount(match[3]),
     };
 };
 
@@ -59,7 +48,7 @@ const parseProfileCountLabel = (label: string): Partial<ProfileCounts> => {
     const match = normalized.match(/^([\d.,KMB]+)\s+(posts?|followers?|following)$/i);
     if (!match) return {};
 
-    const count = parseCompactCount(match[1]);
+    const count = parseInstagramCount(match[1]);
     if (count === undefined) return {};
     const noun = match[2].toLowerCase();
     if (noun.startsWith('post')) return { posts: count };
@@ -95,7 +84,10 @@ const collectDomSnapshot = async (page: Page): Promise<ProfileDomSnapshot> => {
                 .filter((href) => /^https?:\/\//i.test(href) && !href.startsWith('https://www.instagram.com/'))
             : [];
         const profilePictureUrl = header?.querySelector<HTMLImageElement>('img')?.src;
-        const verified = Boolean(header?.querySelector('svg[aria-label="Verified"], title'));
+        const verified = Boolean(
+            header?.querySelector('svg[aria-label="Verified"]')
+            || Array.from(header?.querySelectorAll('svg title') || []).some((title) => clean(title.textContent) === 'Verified'),
+        );
         const privateText = clean(document.body.innerText);
         const isPrivate = /this account is private/i.test(privateText);
 

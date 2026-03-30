@@ -63,4 +63,36 @@ test.describe('scrapeProfile', () => {
             await rm(artifactRootDir, { recursive: true, force: true });
         }
     });
+
+    test('parses compact decimal counts and does not infer verified from unrelated svg titles', async ({ page }) => {
+        await page.setContent(`
+            <main>
+                <header>
+                    <h2>example_user</h2>
+                    <span>3,4K followers</span>
+                    <span>120 following</span>
+                    <span>12 posts</span>
+                    <svg><title>Options</title></svg>
+                </header>
+            </main>
+        `);
+        await page.evaluate(() => {
+            const canonical = document.createElement('link');
+            canonical.rel = 'canonical';
+            canonical.href = 'https://www.instagram.com/example_user/';
+            document.head.append(canonical);
+        });
+
+        const result = await scrapeProfile(page, 'https://www.instagram.com/example_user/', 'https://www.instagram.com/example_user/', {
+            runId: 'run-456',
+            itemIndex: 0,
+            artifactRootDir: tmpdir(),
+            waitAfterNavigationMs: 0,
+            requestTimeoutSecs: 240,
+            screenVideo: false,
+        });
+
+        expect(result.profile.counts).toMatchObject({ posts: 12, followers: 3400, following: 120 });
+        expect(result.profile.indicators.verified).toBe(false);
+    });
 });

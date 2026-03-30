@@ -10,13 +10,17 @@ type VisibleInstagramCounts = {
 };
 
 export const parseInstagramCount = (value: string): number | undefined => {
-    const normalized = value.replace(/\s+/g, '').replace(/,/g, '').toUpperCase();
-    const match = normalized.match(/^(\d+(?:\.\d+)?)([KMB])?(?:LIKES?|COMMENTS?)?$/);
+    const normalized = value.replace(/\s+/g, '').toUpperCase();
+    const match = normalized.match(/^(\d[\d.,]*)([KMB])?(?:LIKES?|COMMENTS?)?$/);
     if (!match) return undefined;
 
-    const amount = Number.parseFloat(match[1]);
-    if (!Number.isFinite(amount)) return undefined;
+    const rawAmount = match[1];
     const suffix = match[2];
+    const normalizedAmount = suffix
+        ? rawAmount.replace(',', '.')
+        : rawAmount.replace(/[.,]/g, '');
+    const amount = Number.parseFloat(normalizedAmount);
+    if (!Number.isFinite(amount)) return undefined;
     const multipliers: Record<string, number> = { K: 1_000, M: 1_000_000, B: 1_000_000_000 };
     const multiplier = suffix ? (multipliers[suffix] ?? 1) : 1;
     return Math.round(amount * multiplier);
