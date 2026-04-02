@@ -18,6 +18,35 @@ test.describe('findTargetPostRoot', () => {
             'Target post body with enough text to pass the minimum-length threshold and be selected.',
         );
     });
+
+    test('finds the target root for watch video layouts without a message block', async ({ page }) => {
+        await page.setContent(`
+            <style>
+                [role="button"], a, h2, video { display: block; width: 420px; min-height: 28px; margin: 8px 0; }
+                [role="dialog"] { width: 480px; border: 1px solid #ccc; padding: 12px; }
+            </style>
+            <div role="dialog" id="other-video">
+                <video></video>
+                <div role="button" aria-label="Like: 12 people">Like</div>
+                <h2>Comments</h2>
+                <a href="https://www.facebook.com/example/videos/111111111111111/?comment_id=1">32w</a>
+            </div>
+            <div role="dialog" id="target-video">
+                <video></video>
+                <div role="button" aria-label="Like: 3758 people">Like</div>
+                <h2>Comments</h2>
+                <a href="https://www.facebook.com/presseteam.austria/videos/627375550054084/?comment_id=773599791725961">32w</a>
+                <div role="article" aria-label="Comment by Ada 32 weeks ago">Visible target comment</div>
+            </div>
+        `);
+
+        const root = await findTargetPostRoot(page, 'https://www.facebook.com/watch/?v=627375550054084');
+
+        expect(root).not.toBeNull();
+        if (!root) throw new Error('Expected watch root to be found.');
+
+        await expect(root).toHaveAttribute('id', 'target-video');
+    });
 });
 
 test.describe('extractPostContent', () => {

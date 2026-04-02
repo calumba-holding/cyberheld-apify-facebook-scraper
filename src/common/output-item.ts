@@ -1,5 +1,6 @@
 import type {
     EngagementScrapeResult,
+    LocalFileArtifact,
     ProfileData,
     ReactionUser,
     ScreenshotArtifact,
@@ -38,6 +39,7 @@ export type ScrapeItemOutput = {
     profile?: ProfileData;
     artifacts?: {
         screenshots?: ScreenshotArtifact[];
+        sourceVideo?: LocalFileArtifact;
     };
 };
 
@@ -122,6 +124,7 @@ export const buildSuccessOutput = (
             reactions: result.reactions,
         },
         comments: result.comments,
+        artifacts: result.sourceVideo ? { sourceVideo: result.sourceVideo } : undefined,
     };
 };
 

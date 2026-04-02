@@ -6,7 +6,7 @@ import type { LaunchBrowserOptions, ProfileLoginOptions, RunScrapeOptions } from
 import { slowlyScrollToTop } from '../common/video-context.js';
 import { COMMENT_REACTIONS_SCRAPER, scrapeCommentReactions } from './scrapers/comment-reactions/index.js';
 import { POST_ENGAGEMENT_SCRAPER, scrapePostEngagement } from './scrapers/post-engagement/index.js';
-import { resolveFacebookPostUrl } from './shared/url.js';
+import { resolveFacebookPostUrl, sanitizeFacebookPostUrl } from './shared/url.js';
 import type { FacebookPlugin, FacebookScrapeResult } from './types.js';
 import { getLoginUrl, getProfileDir } from './profile.js';
 
@@ -40,19 +40,29 @@ const runScrape = async (
     };
 
     try {
-        const resolvedPostUrl = await (resolveFacebookPostUrl as (url: string) => Promise<string>)(targetUrl);
-        if (resolvedPostUrl !== targetUrl) log.info(`Resolved shared URL to: ${resolvedPostUrl}`);
+        const resolvedEntryUrl = await resolveFacebookPostUrl(targetUrl);
+        if (resolvedEntryUrl !== targetUrl) log.info(`Resolved shared URL to: ${resolvedEntryUrl}`);
 
-        await page.goto(resolvedPostUrl, {
+        await page.goto(resolvedEntryUrl, {
             waitUntil: 'domcontentloaded',
             timeout: options.requestTimeoutSecs * 1000,
         });
 
+        const finalUrl = sanitizeFacebookPostUrl(page.url());
+        if (finalUrl !== resolvedEntryUrl) log.info(`Facebook navigation landed on: ${finalUrl}`);
+
         let scrapeResult: FacebookScrapeResult;
         if (scraper === POST_ENGAGEMENT_SCRAPER) {
-            scrapeResult = await scrapePostEngagement(page, targetUrl, resolvedPostUrl, options.waitAfterNavigationMs);
+            scrapeResult = await scrapePostEngagement(page, targetUrl, finalUrl, options.waitAfterNavigationMs, {
+                artifactRootDir: options.artifactRootDir,
+                download: options.download ?? true,
+                itemIndex: options.itemIndex,
+                outputFile: options.outputFile,
+                profileDir: getProfileDir(options.profileRootDir),
+                runId: options.runId,
+            });
         } else if (scraper === COMMENT_REACTIONS_SCRAPER) {
-            scrapeResult = await scrapeCommentReactions(page, targetUrl, resolvedPostUrl, options.waitAfterNavigationMs);
+            scrapeResult = await scrapeCommentReactions(page, targetUrl, finalUrl, options.waitAfterNavigationMs);
         } else {
             throw new Error(`Unsupported Facebook scraper: ${scraper}`);
         }

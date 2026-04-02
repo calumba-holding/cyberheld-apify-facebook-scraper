@@ -40,6 +40,7 @@ describe('parseCliArgs', () => {
             expect(parsed.options.targetUrls).toEqual(['https://www.facebook.com/example/posts/123']);
             expect(parsed.options.concurrency).toBe(1);
             expect(parsed.options.screenVideo).toBe(true);
+            expect(parsed.options.download).toBe(true);
         }
     });
 
@@ -179,6 +180,23 @@ describe('parseCliArgs', () => {
         expect(parsed.kind).toBe('run');
         if (parsed.kind === 'run') {
             expect(parsed.options.screenVideo).toBe(false);
+        }
+    });
+
+    it('disables source-video download when --no-download is provided', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/watch/?v=627375550054084',
+            '--no-download',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.download).toBe(false);
         }
     });
 

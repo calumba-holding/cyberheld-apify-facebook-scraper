@@ -61,6 +61,14 @@ describe('buildSuccessOutput', () => {
         expect(output.comments).toEqual([]);
     });
 
+    it('includes a source-video artifact when the scraper downloaded the original facebook video', () => {
+        const output = buildSuccessOutput(buildResult({
+            sourceVideo: { localPath: '/tmp/run-1_item-1_video-627375550054084.mp4' },
+        }), 'job-source-video');
+
+        expect(output.artifacts?.sourceVideo).toEqual({ localPath: '/tmp/run-1_item-1_video-627375550054084.mp4' });
+    });
+
     it('returns PARTIAL when post reaction extraction did not complete', () => {
         const output = buildSuccessOutput(buildResult({ reactionCount: 0, reactions: [], postReactionsComplete: false }), 'job-2b');
 

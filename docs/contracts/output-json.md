@@ -68,6 +68,7 @@ All scrape runs emit one JSON object to stdout.
   };
   artifacts?: {
     screenshots?: { localPath: string }[];
+    sourceVideo?: { localPath: string };
   };
 }
 ```
@@ -105,6 +106,7 @@ Preferred approach:
 The `comment-reactions` scraper may report `SUCCEEDED` while leaving post reactions empty, because its success condition is finding the target comment and extracting that comment's reactions rather than scraping the post reaction list.
 
 The `post-engagement` scraper returns comments without `comments[].reactions`; it extracts post reactions only.
+For Facebook watch/video runs, `post.url` should reflect the resolved watch or video permalink after Facebook redirects, not the original share URL.
 
 For Instagram `post-engagement`, `PARTIAL` is expected when visible comment expansion still remains actionable after the crawl budget or when the likes dialog cannot be opened for user-level extraction.
 
@@ -139,6 +141,10 @@ Post-level reactions belong in:
 - `post.reactionSummary.total`
 
 Do not mix comment reactions into the post reaction list.
+
+## Source-video artifact rule
+
+Facebook `post-engagement` items for watch/video URLs may populate `artifacts.sourceVideo` with the downloaded original video file.
 
 ## Profile-scraper rule
 

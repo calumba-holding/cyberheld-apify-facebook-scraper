@@ -38,6 +38,7 @@ node dist/main.js [scrape] profile path --target <target>
 - `--concurrency <n>`
 - `--screen-video` (force-enable; the default is on)
 - `--no-screen-video`
+- `--no-download`
 - `--output-file <path>`
 - `--chrome-executable <path>`
 - `--profile-root-dir <dir>`
@@ -53,6 +54,7 @@ node dist/main.js [scrape] profile path --target <target>
 - `stderr`: logs, warnings, and user-facing errors
 - `--output-file`: writes the same final JSON to disk using the run-scoped filename `<run-id>_<basename>`
 - browser video is enabled by default for scrape runs unless `--no-screen-video` or `SCRAPE_SCREEN_VIDEO=false` disables it
+- Facebook watch/video source-video download is enabled by default for `post-engagement` runs unless `--no-download` disables it
 
 New scrapers must keep the same stdout/stderr split.
 
@@ -70,6 +72,8 @@ New scrapers must keep the same stdout/stderr split.
 - integer flags must stay within their documented ranges
 
 Scraper-specific validation is allowed when it is deterministic at parse/dispatch time.
+
+Facebook target URLs may be generic share links. The scraper may follow Facebook redirects first and continue on the resolved permalink or watch URL.
 
 Current scraper-specific requirement:
 - `comment-reactions` requires a Facebook target URL containing `?comment_id=...`

@@ -86,6 +86,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     let scraper: string | undefined;
     const targetUrls: string[] = [];
     let screenVideo = parseBooleanEnv(process.env.SCRAPE_SCREEN_VIDEO, true);
+    let download = true;
     let outputFile: string | undefined;
     let chromeExecutable = process.env.SCRAPE_CHROME_EXECUTABLE ?? defaultChromeExecutable;
     let profileRootDir = process.env.SCRAPE_PROFILE_ROOT_DIR ?? defaultProfileRootDir;
@@ -119,6 +120,9 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
                 break;
             case '--no-screen-video':
                 screenVideo = false;
+                break;
+            case '--no-download':
+                download = false;
                 break;
             case '--output-file':
                 outputFile = takeValue(argv, index, '--output-file');
@@ -162,6 +166,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
         targetUrls,
         concurrency,
         screenVideo,
+        download,
         outputFile,
         chromeExecutable,
         profileRootDir,

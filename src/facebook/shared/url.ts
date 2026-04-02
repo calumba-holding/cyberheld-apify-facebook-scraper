@@ -18,6 +18,26 @@ export const extractCommentIdFromFacebookUrl = (url: string): string | null => {
     }
 };
 
+const normalizeFacebookNumericId = (value: string | null | undefined): string | null => {
+    const normalized = value?.trim();
+    return normalized && /^\d+$/.test(normalized) ? normalized : null;
+};
+
+export const extractFacebookVideoId = (url: string): string | null => {
+    try {
+        const parsed = new URL(url);
+        const queryVideoId = normalizeFacebookNumericId(parsed.searchParams.get('v'));
+        if (queryVideoId) return queryVideoId;
+
+        const videoMatch = parsed.pathname.match(/\/videos\/([^/?#]+)\/?/i);
+        return normalizeFacebookNumericId(videoMatch?.[1]);
+    } catch {
+        return null;
+    }
+};
+
+export const isFacebookVideoUrl = (url: string): boolean => extractFacebookVideoId(url) !== null;
+
 export const resolveFacebookPostUrl = async (url: string): Promise<string> => {
     let current = url;
     for (let redirect = 0; redirect < 5; redirect++) {

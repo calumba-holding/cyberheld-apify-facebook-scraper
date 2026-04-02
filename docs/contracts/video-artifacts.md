@@ -1,6 +1,7 @@
 # Video Artifact Contract
 
 Screen recording is enabled by default for scrape runs and can be disabled with `--no-screen-video` or `SCRAPE_SCREEN_VIDEO=false`.
+This contract covers the run-level browser recording artifact. Per-item downloaded source videos are separate additive artifacts.
 
 ## Current behavior
 
@@ -26,7 +27,7 @@ When browser video is enabled:
 
 ## Output contract
 
-Video presence is reported through:
+Run-level browser video presence is reported through:
 
 ```ts
 artifacts: {
@@ -36,6 +37,16 @@ artifacts: {
   };
 }
 ```
+
+Facebook watch/video `post-engagement` items may additionally expose:
+
+```ts
+result.artifacts.sourceVideo = {
+  localPath: string;
+}
+```
+
+The source-video artifact does not replace or alter the run-level screen-recording lifecycle. It may be suppressed per run with `--no-download`.
 
 ## Recorded-flow note
 

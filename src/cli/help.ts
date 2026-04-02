@@ -28,6 +28,7 @@ Options:
   --concurrency <n>          Number of tabs to scrape in parallel (default: 1)
   --screen-video             Force-enable Playwright browser video recording
   --no-screen-video          Disable Playwright browser video recording (default is on)
+  --no-download              Disable source-video download for Facebook watch/video runs
   --output-file <path>       Also write the final JSON to a file
   --chrome-executable <path> Chrome executable path
   --profile-root-dir <dir>   Root dir for persistent target profiles
@@ -43,12 +44,14 @@ Output:
   - stderr: logs and errors
   - JSON file: only when --output-file is set
   - video artifact: written by default unless --no-screen-video is set
+  - source-video download: enabled by default for Facebook watch/video post-engagement runs unless --no-download is set
 
 Notes:
   - comment-reactions requires a Facebook URL containing ?comment_id=...
 
 Examples:
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
+  scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/share/v/..." --no-download
   scrape --target facebook --scraper comment-reactions --target-url "https://www.facebook.com/...?...&comment_id=123456"
   scrape --target instagram --scraper post-engagement --target-url "https://www.instagram.com/p/..."
   scrape --target instagram --scraper profile-scraper --target-url "https://www.instagram.com/example/"

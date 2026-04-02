@@ -7,6 +7,7 @@ export interface RunCliOptions {
     targetUrls: string[];
     concurrency: number;
     screenVideo: boolean;
+    download: boolean;
     outputFile?: string;
     chromeExecutable: string;
     profileRootDir: string;

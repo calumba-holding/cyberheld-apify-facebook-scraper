@@ -7,9 +7,12 @@ export interface RunScrapeOptions {
     itemIndex: number;
     outputFile?: string;
     artifactRootDir: string;
+    chromeExecutable: string;
+    profileRootDir: string;
     waitAfterNavigationMs: number;
     requestTimeoutSecs: number;
     screenVideo?: boolean;
+    download?: boolean;
 }
 
 export interface ProfileLoginOptions {
@@ -63,9 +66,11 @@ export interface ScrapedComment {
     reactions?: CommentReactionDetails;
 }
 
-export interface ScreenshotArtifact {
+export interface LocalFileArtifact {
     localPath: string;
 }
+
+export type ScreenshotArtifact = LocalFileArtifact;
 
 export interface EngagementScrapeResult extends BaseScrapeResult {
     kind: 'engagement';
@@ -77,6 +82,7 @@ export interface EngagementScrapeResult extends BaseScrapeResult {
     postContent?: string;
     reactions: ReactionUser[];
     comments: ScrapedComment[];
+    sourceVideo?: LocalFileArtifact;
 }
 
 export interface ProfileCounts {

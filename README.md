@@ -140,6 +140,8 @@ The `comment-reactions` scraper:
 - slowly scrolls back to the top at the end so the video shows the post context
 - fails the result if the target comment cannot be found
 
+For Facebook share/video URLs, the scraper follows the Facebook redirect and continues on the resolved watch or permalink URL. For watch/video `post-engagement` runs, it also downloads the original source video as a per-item artifact when possible unless `--no-download` disables that step.
+
 ## Scrape multiple URLs in parallel
 
 ```bash
@@ -173,11 +175,22 @@ node dist/main.js \
   --no-screen-video
 ```
 
+## Disable original source-video download for a watch/video run
+
+```bash
+node dist/main.js \
+  --target facebook \
+  --scraper post-engagement \
+  --target-url "https://www.facebook.com/share/v/1CnN9eCXgg/" \
+  --no-download
+```
+
 ## Output behavior
 
 - `stdout`: always final JSON
 - `stderr`: logs and errors
 - `--output-file <path>`: also writes the JSON to disk using the run-scoped filename `<run-id>_<basename>`
+- Facebook watch/video `post-engagement` runs may also write a per-item source video file next to the JSON output unless `--no-download` disables that artifact
 - browser video:
   - enabled by default for browser-based scrapers
   - disable per run with `--no-screen-video`
