@@ -1,4 +1,6 @@
 import type {
+    BlockedPageArtifact,
+    BrowserSessionMode,
     EngagementScrapeResult,
     LocalFileArtifact,
     ProfileData,
@@ -14,6 +16,8 @@ export type VideoArtifact = {
     localPath?: string;
 };
 
+export type ScrapeBrowser = 'persistent-chrome-profile' | 'guest-chrome-session';
+
 export type ScrapeItemOutput = {
     input: { targetUrl: string };
     scrape: {
@@ -21,7 +25,7 @@ export type ScrapeItemOutput = {
         status: 'SUCCEEDED' | 'PARTIAL' | 'FAILED';
         scrapedAt: string;
         runtime: 'cli';
-        browser: 'persistent-chrome-profile';
+        browser: ScrapeBrowser;
         error?: string;
     };
     completeness?: {
@@ -40,6 +44,11 @@ export type ScrapeItemOutput = {
     artifacts?: {
         screenshots?: ScreenshotArtifact[];
         sourceVideo?: LocalFileArtifact;
+        blockedPage?: {
+            finalUrl: string;
+            screenshot?: LocalFileArtifact;
+            html?: LocalFileArtifact;
+        };
     };
 };
 
@@ -53,6 +62,7 @@ export type ScrapeRunOutput = {
         finishedAt: string;
         concurrency: number;
         requestedUrls: number;
+        browserSession: BrowserSessionMode;
     };
     summary: {
         succeeded: number;
@@ -61,6 +71,10 @@ export type ScrapeRunOutput = {
     };
     artifacts: { video: VideoArtifact };
     results: ScrapeItemOutput[];
+};
+
+const resolveBrowserLabel = (browserSessionMode: BrowserSessionMode): ScrapeBrowser => {
+    return browserSessionMode === 'guest-session' ? 'guest-chrome-session' : 'persistent-chrome-profile';
 };
 
 const resolveCommentsComplete = (result: EngagementScrapeResult): boolean => {
@@ -90,6 +104,7 @@ const toStatus = (result: ScrapeResult): 'SUCCEEDED' | 'PARTIAL' => {
 export const buildSuccessOutput = (
     result: ScrapeResult,
     jobId: string,
+    browserSessionMode: BrowserSessionMode = 'persistent-profile',
 ): ScrapeItemOutput => {
     const baseOutput = {
         input: { targetUrl: result.inputUrl },
@@ -98,7 +113,7 @@ export const buildSuccessOutput = (
             status: toStatus(result),
             scrapedAt: result.scrapedAt,
             runtime: 'cli' as const,
-            browser: 'persistent-chrome-profile' as const,
+            browser: resolveBrowserLabel(browserSessionMode),
         },
     };
 
@@ -132,6 +147,8 @@ export const buildFailedOutput = (
     inputUrl: string,
     jobId: string,
     error: string,
+    browserSessionMode: BrowserSessionMode = 'persistent-profile',
+    blockedPage?: BlockedPageArtifact,
 ): ScrapeItemOutput => ({
     input: { targetUrl: inputUrl },
     scrape: {
@@ -139,7 +156,7 @@ export const buildFailedOutput = (
         status: 'FAILED',
         scrapedAt: new Date().toISOString(),
         runtime: 'cli',
-        browser: 'persistent-chrome-profile',
+        browser: resolveBrowserLabel(browserSessionMode),
         error,
     },
     completeness: {
@@ -153,13 +170,21 @@ export const buildFailedOutput = (
         reactions: [],
     },
     comments: [],
-    artifacts: { screenshots: [] },
+    artifacts: {
+        screenshots: [],
+        blockedPage: blockedPage ? {
+            finalUrl: blockedPage.finalUrl,
+            screenshot: blockedPage.screenshot,
+            html: blockedPage.html,
+        } : undefined,
+    },
 });
 
 export const buildRunOutput = (
     target: SupportedTarget,
     scraper: string,
     profileDir: string,
+    browserSessionMode: BrowserSessionMode,
     runId: string,
     startedAt: string,
     finishedAt: string,
@@ -185,6 +210,7 @@ export const buildRunOutput = (
             finishedAt,
             concurrency,
             requestedUrls,
+            browserSession: browserSessionMode,
         },
         summary,
         artifacts: { video },

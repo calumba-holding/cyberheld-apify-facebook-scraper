@@ -15,6 +15,7 @@ All scrape runs emit one JSON object to stdout.
     finishedAt: string;
     concurrency: number;
     requestedUrls: number;
+    browserSession: 'persistent-profile' | 'public-session' | 'guest-session';
   };
   summary: {
     succeeded: number;
@@ -41,7 +42,7 @@ All scrape runs emit one JSON object to stdout.
     status: 'SUCCEEDED' | 'PARTIAL' | 'FAILED';
     scrapedAt: string;
     runtime: 'cli';
-    browser: 'persistent-chrome-profile';
+    browser: 'persistent-chrome-profile' | 'guest-chrome-session';
     error?: string;
   };
   completeness?: {
@@ -69,9 +70,16 @@ All scrape runs emit one JSON object to stdout.
   artifacts?: {
     screenshots?: { localPath: string }[];
     sourceVideo?: { localPath: string };
+    blockedPage?: {
+      finalUrl: string;
+      screenshot?: { localPath: string };
+      html?: { localPath: string };
+    };
   };
 }
 ```
+
+`profileDir` remains part of the top-level contract. For Facebook `public-session` runs it reports the dedicated public-profile path. For guest Facebook runs it still reports the resolved target profile path for compatibility, even though that persistent profile is not used by the scrape session.
 
 ## Status semantics
 
@@ -91,6 +99,7 @@ Runtime failures should keep the same item shape and populate:
 - `scrape.status = 'FAILED'`
 - `scrape.error`
 - empty reaction/comment arrays as appropriate
+- `artifacts.blockedPage` when the scraper captured redirect/login-wall diagnostics before failing
 
 ## Stability rule
 
@@ -107,6 +116,9 @@ The `comment-reactions` scraper may report `SUCCEEDED` while leaving post reacti
 
 The `post-engagement` scraper returns comments without `comments[].reactions`; it extracts post reactions only.
 For Facebook watch/video runs, `post.url` should reflect the resolved watch or video permalink after Facebook redirects, not the original share URL.
+Facebook public-session runs report `run.browserSession = 'public-session'` while keeping `results[].scrape.browser = 'persistent-chrome-profile'` because they still use a persistent Chrome profile.
+Facebook guest-session runs report `run.browserSession = 'guest-session'` and `results[].scrape.browser = 'guest-chrome-session'`.
+When Facebook redirects a public/guest session away from the requested target, failed items may include `artifacts.blockedPage` with screenshot/html diagnostics for the blocked page.
 
 For Instagram `post-engagement`, `PARTIAL` is expected when visible comment expansion still remains actionable after the crawl budget or when the likes dialog cannot be opened for user-level extraction.
 

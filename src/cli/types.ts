@@ -1,4 +1,4 @@
-import type { SupportedTarget } from '../common/types.js';
+import type { BrowserSessionMode, SupportedTarget } from '../common/types.js';
 
 export interface RunCliOptions {
     command: 'run';
@@ -6,6 +6,7 @@ export interface RunCliOptions {
     scraper: string;
     targetUrls: string[];
     concurrency: number;
+    browserSessionMode: BrowserSessionMode;
     screenVideo: boolean;
     download: boolean;
     outputFile?: string;

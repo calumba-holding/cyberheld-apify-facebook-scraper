@@ -10,7 +10,7 @@ Current plugin support:
   - scraper: `post-engagement`
   - scraper: `profile-scraper`
 
-The CLI reuses a persistent Chrome profile per target, always prints JSON to stdout, and records browser video via Playwright by default while scraping.
+The CLI reuses a persistent Chrome profile per target by default, can open a persistent non-login public Facebook profile or a temporary guest Chrome session for Facebook, always prints JSON to stdout, and records browser video via Playwright by default while scraping.
 
 ## Project structure
 
@@ -26,6 +26,8 @@ src/
 
 - persistent per-target Chrome profiles
 - one-time manual login flow via CLI
+- optional Facebook public-session scraping with a persistent non-login profile
+- optional Facebook guest-session scraping without saved login state
 - scraping one or many target URLs
 - parallel scraping with `--concurrency`
 - strict JSON output to stdout
@@ -55,11 +57,32 @@ When code changes affect contracts, scraper behavior, or repository workflow, up
 
 ## First run
 
-Log into Facebook once with the persistent scraper profile before scraping:
+Log into the persistent scraper profile once when you need authenticated scraping:
 
 ```bash
 node dist/main.js profile login --target facebook
 node dist/main.js profile login --target instagram
+```
+
+For public Facebook posts you can also skip login.
+Recommended: use a persistent public session that keeps cookie consent and other non-login session state in a separate profile:
+
+```bash
+node dist/main.js \
+  --target facebook \
+  --scraper post-engagement \
+  --target-url "https://www.facebook.com/..." \
+  --public-session
+```
+
+You can still use a fully fresh temporary guest browser session when needed:
+
+```bash
+node dist/main.js \
+  --target facebook \
+  --scraper post-engagement \
+  --target-url "https://www.facebook.com/..." \
+  --guest-session
 ```
 
 ## CLI overview
@@ -140,7 +163,7 @@ The `comment-reactions` scraper:
 - slowly scrolls back to the top at the end so the video shows the post context
 - fails the result if the target comment cannot be found
 
-For Facebook share/video URLs, the scraper follows the Facebook redirect and continues on the resolved watch or permalink URL. For watch/video `post-engagement` runs, it also downloads the original source video as a per-item artifact when possible unless `--no-download` disables that step.
+For Facebook share/video URLs, the scraper follows the Facebook redirect and continues on the resolved watch or permalink URL. For watch/video `post-engagement` runs, it also downloads the original source video as a per-item artifact when possible unless `--no-download` disables that step. Both Facebook scrapers can also run with `--public-session` or `--guest-session` when the target post is publicly visible.
 
 ## Scrape multiple URLs in parallel
 
@@ -190,6 +213,8 @@ node dist/main.js \
 - `stdout`: always final JSON
 - `stderr`: logs and errors
 - `--output-file <path>`: also writes the JSON to disk using the run-scoped filename `<run-id>_<basename>`
+- `run.browserSession`: reports whether the run used the authenticated persistent profile, the public persistent profile, or a guest session
+- `results[].scrape.browser`: reports `persistent-chrome-profile` or `guest-chrome-session`
 - Facebook watch/video `post-engagement` runs may also write a per-item source video file next to the JSON output unless `--no-download` disables that artifact
 - browser video:
   - enabled by default for browser-based scrapers
@@ -210,6 +235,10 @@ The Facebook plugin currently extracts:
 - UTC timestamps for visible comments/replies
 
 The `post-engagement` scraper does not enrich comments with comment-level reactions. Use `comment-reactions` when you need reactions for one specific comment.
+
+`--public-session` is now the recommended no-login mode for publicly visible Facebook posts. It uses a separate persistent profile (default: `~/.scrape/profiles/facebook-public`) so cookie-consent and other non-login session state can survive across runs. `--guest-session` stays available for a fully fresh temporary session.
+
+Both public modes apply a small stealth-hardening layer (`navigator.webdriver`, automation flag reduction, common fingerprint patches). When Facebook redirects the browser away from the requested post to home/login, the run now fails fast with a clear login-wall/bot-check error instead of continuing on the wrong page. Failed items also include blocked-page diagnostics (`artifacts.blockedPage`) with screenshot/html paths when capture succeeds. If Facebook merely hides reactions/comments from public visitors, the item may still end up `PARTIAL`.
 
 A `post-engagement` result may still be marked successful when the post has zero visible comments. For zero post reactions, an empty `post.reactions` array only stays successful when the scraper can positively confirm an explicit zero-reaction state; otherwise the item remains `PARTIAL`.
 
@@ -251,6 +280,8 @@ Rules include:
 
 ## Notes
 
-- The scraper uses a custom persistent Chrome profile, not the host system default Chrome profile.
+- By default the scraper uses a custom persistent Chrome profile, not the host system default Chrome profile.
+- Facebook `--public-session` runs use a separate persistent non-login profile at `~/.scrape/profiles/facebook-public` by default.
+- Facebook `--guest-session` runs use a temporary Chrome session instead of the saved scraper profile.
 - Facebook extraction is scoped to the target post container to avoid drifting into adjacent posts.
 - When Facebook does not show a comments filter for small threads, the scraper treats the visible thread as already complete.

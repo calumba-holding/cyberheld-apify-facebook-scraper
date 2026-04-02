@@ -44,10 +44,11 @@ const runScrapeCommand = async (options: RunCliOptions): Promise<ScrapeRunOutput
     const runId = randomUUID();
     const startedAt = new Date().toISOString();
     const plugin = getTargetPlugin(options.target) as TargetPlugin;
-    const profileDir = plugin.getProfileDir(options.profileRootDir);
+    const profileDir = plugin.getProfileDir(options.profileRootDir, options.browserSessionMode);
     let videoArtifact: VideoArtifact = { present: false };
     const recordVideoDir = await prepareRawVideoDir(options, runId);
-    const context = await plugin.launchPersistentBrowser({
+    const context = await plugin.launchBrowser({
+        browserSessionMode: options.browserSessionMode,
         chromeExecutable: options.chromeExecutable,
         profileRootDir: options.profileRootDir,
         recordVideoDir,
@@ -63,16 +64,19 @@ const runScrapeCommand = async (options: RunCliOptions): Promise<ScrapeRunOutput
                     runId,
                     itemIndex,
                 });
-                return buildSuccessOutput(scrapeResult, runId);
+                return buildSuccessOutput(scrapeResult, runId, options.browserSessionMode);
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
+                const blockedPage = error instanceof Error && 'blockedPage' in error
+                    ? (error as Error & { blockedPage?: Parameters<typeof buildFailedOutput>[4] }).blockedPage
+                    : undefined;
                 log.error(`${targetUrl}: ${message}`);
-                return buildFailedOutput(targetUrl, runId, message);
+                return buildFailedOutput(targetUrl, runId, message, options.browserSessionMode, blockedPage);
             }
         });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        results = options.targetUrls.map((targetUrl) => buildFailedOutput(targetUrl, runId, message));
+        results = options.targetUrls.map((targetUrl) => buildFailedOutput(targetUrl, runId, message, options.browserSessionMode));
     } finally {
         await context.close().catch(() => undefined);
     }
@@ -88,6 +92,7 @@ const runScrapeCommand = async (options: RunCliOptions): Promise<ScrapeRunOutput
         options.target,
         options.scraper,
         profileDir,
+        options.browserSessionMode,
         runId,
         startedAt,
         new Date().toISOString(),

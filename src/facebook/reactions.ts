@@ -1,7 +1,6 @@
 import { log } from '../common/logger.js';
 import type { Locator, Page } from 'playwright';
 
-import { REACTION_LABELS } from './constants.js';
 import { closePostReactionModal, openPostReactionModal, scrollPostReactionList } from './post-reaction-modal.js';
 import { normalizeProfileUrl } from './reaction-helpers.js';
 import { PROFILE_PICTURE_SELECTOR } from './selectors.js';
@@ -10,11 +9,27 @@ import type { ReactionUser } from './types.js';
 export interface PostReactionExtractionResult {
     users: ReactionUser[];
     extracted: boolean;
+    visibleTotal?: number;
 }
 
 type ReactionBreakdown = {
     reaction: string;
     count: number;
+};
+
+const REACTION_NAME_ALIASES: Record<string, string> = {
+    like: 'Like',
+    'gefällt mir': 'Like',
+    love: 'Love',
+    liebe: 'Love',
+    care: 'Care',
+    umarmt: 'Care',
+    haha: 'Haha',
+    wow: 'Wow',
+    sad: 'Sad',
+    traurig: 'Sad',
+    angry: 'Angry',
+    wütend: 'Angry',
 };
 
 type ReactionButtonCandidate = ReactionBreakdown & {
@@ -23,23 +38,34 @@ type ReactionButtonCandidate = ReactionBreakdown & {
     y: number;
 };
 
+const normalizeReactionName = (value: string): string => {
+    return REACTION_NAME_ALIASES[value.trim().toLowerCase()] ?? value.trim();
+};
+
 const parseReactionButton = (ariaLabel: string, allowZeroCount = false): ReactionBreakdown | null => {
-    for (const reaction of REACTION_LABELS) {
-        if (!ariaLabel.startsWith(`${reaction}:`)) continue;
-        const count = Number.parseInt(ariaLabel.slice(reaction.length + 1).trim().split(' ')[0] || '0', 10);
-        if (!Number.isFinite(count) || count < 0) return null;
-        if (count > 0 || (allowZeroCount && count === 0)) return { reaction, count };
-        return null;
-    }
+    const match = ariaLabel.match(/^([^:]+):\s*(\d+)/u);
+    if (!match) return null;
+
+    const reaction = normalizeReactionName(match[1] || '');
+    const count = Number.parseInt(match[2] || '0', 10);
+    if (!Number.isFinite(count) || count < 0 || !reaction) return null;
+    if (count > 0 || (allowZeroCount && count === 0)) return { reaction, count };
     return null;
 };
 
 const parseReactionTab = (ariaLabel: string): ReactionBreakdown | null => {
-    const match = ariaLabel.match(/^Show\s+(\d+).*reacted with\s+(.+)$/i);
-    if (!match) return null;
+    const englishMatch = ariaLabel.match(/^Show\s+(\d+).*reacted with\s+(.+)$/i);
+    if (englishMatch) {
+        const count = Number.parseInt(englishMatch[1], 10);
+        const reaction = normalizeReactionName(englishMatch[2] || '');
+        if (!Number.isFinite(count) || !reaction) return null;
+        return { reaction, count };
+    }
 
-    const count = Number.parseInt(match[1], 10);
-    const reaction = match[2]?.trim();
+    const genericMatch = ariaLabel.match(/(\d+)/u);
+    if (!genericMatch) return null;
+    const count = Number.parseInt(genericMatch[1], 10);
+    const reaction = normalizeReactionName(ariaLabel.replace(/\d+/gu, '').replace(/[–—:]/gu, ' ').trim());
     if (!Number.isFinite(count) || !reaction) return null;
     return { reaction, count };
 };
@@ -134,6 +160,14 @@ const collectUsersForReaction = async (page: Page, modal: Locator, reaction: str
     return users;
 };
 
+const isLoginRequiredReactionModal = async (modal: Locator): Promise<boolean> => {
+    const loginCta = modal.locator('[aria-label="Bei Facebook anmelden"], [aria-label="Log in to Facebook"], [aria-label="Anmelden"], [aria-label="Neues Konto erstellen"], [aria-label="Create new account"]');
+    if (await loginCta.first().isVisible().catch(() => false)) return true;
+
+    const emailInput = modal.locator('[aria-label="E-Mail-Adresse oder Handynummer"], [aria-label="Email address or phone number"]');
+    return emailInput.first().isVisible().catch(() => false);
+};
+
 const extractUsersFromModal = async (page: Page, modal: Locator, fallbackReaction: string): Promise<ReactionUser[]> => {
     await modal.locator(PROFILE_PICTURE_SELECTOR).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => undefined);
 
@@ -159,12 +193,14 @@ export const extractAllReactions = async (
         const zeroReactionCandidates = await collectReactionButtons(scope, { allowZeroCount: true });
         if (zeroReactionCandidates.length) {
             log.info('The target post shows an explicit zero-reaction entry. Treating post reaction extraction as complete.');
-            return { users: [], extracted: true };
+            return { users: [], extracted: true, visibleTotal: 0 };
         }
 
         log.warning('Could not confirm a visible post reaction entry inside the target post. Leaving post reaction extraction as incomplete.');
         return { users: [], extracted: false };
     }
+
+    const visibleTotal = candidates.reduce((sum, candidate) => sum + candidate.count, 0);
 
     const primary = candidates[0];
     const button = scope.locator('[role="button"][aria-label]').nth(primary.index);
@@ -175,9 +211,14 @@ export const extractAllReactions = async (
     }
 
     try {
+        if (await isLoginRequiredReactionModal(modal)) {
+            log.warning(`Facebook opened a login-gated reactions dialog. Keeping visible reaction total ${String(visibleTotal)} but marking user extraction incomplete.`);
+            return { users: [], extracted: false, visibleTotal };
+        }
+
         const reactions = await extractUsersFromModal(page, modal, primary.reaction);
         log.info(`Done. Extracted ${reactions.length} post reaction users.`);
-        return { users: reactions, extracted: true };
+        return { users: reactions, extracted: true, visibleTotal };
     } finally {
         await closePostReactionModal(page, modal);
     }

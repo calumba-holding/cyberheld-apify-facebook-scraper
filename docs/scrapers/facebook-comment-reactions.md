@@ -13,6 +13,10 @@ Required:
 - `--scraper comment-reactions`
 - `--target-url <facebook-post-url-with-comment_id>`
 
+Optional:
+- `--public-session`
+- `--guest-session`
+
 Example:
 
 ```bash
@@ -46,6 +50,16 @@ A successful item includes:
 
 - `SUCCEEDED`: target comment found and the scraper completed the single-comment reaction flow
 - `FAILED`: missing `comment_id`, target comment not found, or runtime failure prevented extraction
+
+## Public-session note
+
+`--public-session` runs the same scraper in a dedicated persistent non-login Facebook profile.
+Use it as the preferred no-login mode when public comment deep links should benefit from cookie-consent reuse and other persistent non-login state.
+
+## Guest-session note
+
+`--guest-session` runs the same scraper in a temporary Chrome session without saved login state.
+It is intended for publicly visible comment deep links when a fresh session is desired. If Facebook redirects the browser away from the requested comment URL to home/login or another unrelated page, the item fails immediately instead of scraping the redirected page and captures blocked-page screenshot/html diagnostics.
 
 ## Notes
 

@@ -39,6 +39,7 @@ describe('parseCliArgs', () => {
             expect(parsed.options.scraper).toBe('post-engagement');
             expect(parsed.options.targetUrls).toEqual(['https://www.facebook.com/example/posts/123']);
             expect(parsed.options.concurrency).toBe(1);
+            expect(parsed.options.browserSessionMode).toBe('persistent-profile');
             expect(parsed.options.screenVideo).toBe(true);
             expect(parsed.options.download).toBe(true);
         }
@@ -183,6 +184,40 @@ describe('parseCliArgs', () => {
         }
     });
 
+    it('uses a public browser session for facebook when --public-session is provided', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+            '--public-session',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.browserSessionMode).toBe('public-session');
+        }
+    });
+
+    it('uses a guest browser session for facebook when --guest-session is provided', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+            '--guest-session',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.browserSessionMode).toBe('guest-session');
+        }
+    });
+
     it('disables source-video download when --no-download is provided', () => {
         const parsed = parseCliArgs([
             '--target',
@@ -220,6 +255,30 @@ describe('parseCliArgs', () => {
             '--concurrency',
             '0',
         ])).toThrowError('concurrency must be an integer between 1 and 16.');
+    });
+
+    it('throws an error when --public-session is used for a non-facebook target', () => {
+        expect(() => parseCliArgs([
+            '--target',
+            'instagram',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.instagram.com/p/example-post/',
+            '--public-session',
+        ])).toThrowError('--public-session and --guest-session are currently supported only for --target facebook.');
+    });
+
+    it('throws an error when --guest-session is used for a non-facebook target', () => {
+        expect(() => parseCliArgs([
+            '--target',
+            'instagram',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.instagram.com/p/example-post/',
+            '--guest-session',
+        ])).toThrowError('--public-session and --guest-session are currently supported only for --target facebook.');
     });
 
     it('throws an error when target is unsupported', () => {

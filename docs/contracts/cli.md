@@ -36,6 +36,8 @@ node dist/main.js [scrape] profile path --target <target>
 ### Optional
 
 - `--concurrency <n>`
+- `--public-session` (Facebook only; use a persistent non-login Facebook profile for public scraping)
+- `--guest-session` (Facebook only; use a temporary Chrome session without the saved target profile)
 - `--screen-video` (force-enable; the default is on)
 - `--no-screen-video`
 - `--no-download`
@@ -55,6 +57,8 @@ node dist/main.js [scrape] profile path --target <target>
 - `--output-file`: writes the same final JSON to disk using the run-scoped filename `<run-id>_<basename>`
 - browser video is enabled by default for scrape runs unless `--no-screen-video` or `SCRAPE_SCREEN_VIDEO=false` disables it
 - Facebook watch/video source-video download is enabled by default for `post-engagement` runs unless `--no-download` disables it
+- `--public-session` uses a persistent non-login Facebook profile and is currently supported only for `--target facebook`
+- `--guest-session` uses a temporary Chrome session and is currently supported only for `--target facebook`
 
 New scrapers must keep the same stdout/stderr split.
 
@@ -77,6 +81,7 @@ Facebook target URLs may be generic share links. The scraper may follow Facebook
 
 Current scraper-specific requirement:
 - `comment-reactions` requires a Facebook target URL containing `?comment_id=...`
+- `--public-session` and `--guest-session` are rejected for non-Facebook targets
 
 ## Naming rules
 

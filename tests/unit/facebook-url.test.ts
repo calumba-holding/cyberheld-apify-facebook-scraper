@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractCommentIdFromFacebookUrl, extractFacebookVideoId, isFacebookVideoUrl, sanitizeFacebookPostUrl } from '../../src/facebook/shared/url.js';
+import {
+    extractCommentIdFromFacebookUrl,
+    extractFacebookPageRootUrl,
+    extractFacebookVideoId,
+    isEquivalentFacebookTargetUrl,
+    isFacebookLoginOrHomeUrl,
+    isFacebookVideoUrl,
+    sanitizeFacebookPostUrl,
+} from '../../src/facebook/shared/url.js';
 
 describe('facebook url helpers', () => {
     it('extracts comment_id when present', () => {
@@ -37,5 +45,36 @@ describe('facebook url helpers', () => {
         expect(isFacebookVideoUrl('https://www.facebook.com/watch/?v=627375550054084')).toBe(true);
         expect(isFacebookVideoUrl('https://www.facebook.com/watch/?v=../../tmp/pwned')).toBe(false);
         expect(isFacebookVideoUrl('https://www.facebook.com/example/posts/123')).toBe(false);
+    });
+
+    it('treats canonical facebook post urls with the same target token as equivalent', () => {
+        expect(isEquivalentFacebookTargetUrl(
+            'https://www.facebook.com/derStandardat/posts/pfbid02FL4r5EAvs8HzNMrSoVtSzibgZZJ3ZCjckbc5WTGQnRdKPJjcpsv8cuphbJrmvDEEl',
+            'https://www.facebook.com/derStandardat/posts/pfbid02FL4r5EAvs8HzNMrSoVtSzibgZZJ3ZCjckbc5WTGQnRdKPJjcpsv8cuphbJrmvDEEl/',
+        )).toBe(true);
+    });
+
+    it('extracts a page-root url for page-scoped post targets', () => {
+        expect(extractFacebookPageRootUrl('https://www.facebook.com/derStandardat/posts/pfbid02FL4r5EAvs8HzNMrSoVtSzibgZZJ3ZCjckbc5WTGQnRdKPJjcpsv8cuphbJrmvDEEl')).toBe(
+            'https://www.facebook.com/derStandardat',
+        );
+        expect(extractFacebookPageRootUrl('https://www.facebook.com/presseteam.austria/videos/627375550054084/')).toBe(
+            'https://www.facebook.com/presseteam.austria',
+        );
+        expect(extractFacebookPageRootUrl('https://www.facebook.com/watch/?v=627375550054084')).toBeNull();
+    });
+
+    it('treats facebook home and login urls as login-wall redirects', () => {
+        expect(isFacebookLoginOrHomeUrl('https://www.facebook.com/')).toBe(true);
+        expect(isFacebookLoginOrHomeUrl('https://www.facebook.com/login/')).toBe(true);
+        expect(isFacebookLoginOrHomeUrl('https://www.facebook.com/login.php')).toBe(true);
+        expect(isFacebookLoginOrHomeUrl('https://www.facebook.com/derStandardat/posts/pfbid02FL4r5EAvs8HzNMrSoVtSzibgZZJ3ZCjckbc5WTGQnRdKPJjcpsv8cuphbJrmvDEEl')).toBe(false);
+    });
+
+    it('rejects redirects away from the requested facebook target', () => {
+        expect(isEquivalentFacebookTargetUrl(
+            'https://www.facebook.com/derStandardat/posts/pfbid02FL4r5EAvs8HzNMrSoVtSzibgZZJ3ZCjckbc5WTGQnRdKPJjcpsv8cuphbJrmvDEEl',
+            'https://www.facebook.com/',
+        )).toBe(false);
     });
 });

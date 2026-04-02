@@ -10,7 +10,9 @@ Current scrapers:
 
 ## Behavioral rules
 
-- use the persistent target-specific Chrome profile
+- use the persistent target-specific Chrome profile by default
+- allow `--public-session` for public Facebook scrape runs that should keep a separate persistent non-login profile
+- allow `--guest-session` for public Facebook scrape runs that should not reuse saved login state
 - keep Facebook-specific scraping logic inside `src/facebook/`
 - prefer target-local shared helpers over leaking logic into `src/common/`
 - keep selectors and UI assumptions documented when adding a new scraper
@@ -47,6 +49,29 @@ For Facebook post deep links that include `comment_id`:
 
 Do not assume a full comment crawl is required for every comment-targeted scraper.
 
+## Public-session guidance
+
+For Facebook public-session runs:
+- launch a dedicated persistent non-login profile such as `~/.scrape/profiles/facebook-public`
+- reuse cookie-consent and other non-login browser state across runs
+- warm the session on Facebook before navigating to the target post
+- apply best-effort stealth hardening because the browser is still automation-controlled
+- fail fast when Facebook redirects the browser away from the requested target URL to home/login or another unrelated page
+- capture blocked-page screenshot/html diagnostics when that redirect failure happens
+
+## Guest-session guidance
+
+For Facebook guest-session runs:
+- launch a temporary Chrome session without the saved target profile
+- expect best-effort behavior only for publicly visible posts, comments, and reactions
+- dismiss visible guest modals/cookie prompts before extraction when possible
+- warm the session on Facebook before navigating to the target post
+- apply best-effort guest-session stealth hardening to reduce obvious automation fingerprints
+- fail fast when Facebook redirects the browser away from the requested target URL to home/login or another unrelated page
+- capture blocked-page screenshot/html diagnostics when that redirect failure happens
+- keep the same scraper names and JSON contract; only the browser session mode changes
+- do not use the persistent profile for browser navigation in this mode
+
 ## Watch/video guidance
 
 For Facebook watch/video pages:
@@ -54,6 +79,7 @@ For Facebook watch/video pages:
 - scope extraction to the watch feed container when possible
 - keep comment extraction compatible with video pages that do not expose a standard post body block
 - when running `post-engagement` on a watch/video URL, also download the original source video as a per-item artifact when possible unless `--no-download` disables it
+- persistent-profile runs may pass browser cookies to the downloader; guest-session runs must work without the saved profile cookies
 
 ## Shared-helper guidance
 

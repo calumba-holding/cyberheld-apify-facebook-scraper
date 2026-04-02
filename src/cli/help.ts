@@ -26,6 +26,8 @@ Required for scraping:
 
 Options:
   --concurrency <n>          Number of tabs to scrape in parallel (default: 1)
+  --public-session          Use a persistent non-login Facebook profile for public scraping
+  --guest-session           Use a temporary Chrome session without the saved target profile
   --screen-video             Force-enable Playwright browser video recording
   --no-screen-video          Disable Playwright browser video recording (default is on)
   --no-download              Disable source-video download for Facebook watch/video runs
@@ -48,9 +50,12 @@ Output:
 
 Notes:
   - comment-reactions requires a Facebook URL containing ?comment_id=...
+  - --public-session and --guest-session are currently supported only for --target facebook
 
 Examples:
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
+  scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..." --public-session
+  scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..." --guest-session
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/share/v/..." --no-download
   scrape --target facebook --scraper comment-reactions --target-url "https://www.facebook.com/...?...&comment_id=123456"
   scrape --target instagram --scraper post-engagement --target-url "https://www.instagram.com/p/..."
