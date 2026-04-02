@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added Facebook watch/share video support for `post-engagement`, including redirect resolution to the final watch URL, original source-video downloads by default, and a `--no-download` opt-out.
 - Added an Instagram `profile-scraper` with persistent-profile login plus visible profile metadata extraction and screenshot artifacts. #15
 - Changed browser-based scrapers to record Playwright video by default; pass `--no-screen-video` to disable it per run. #14
 - Improved Instagram compact-count parsing so values such as `3,4K` are normalized correctly for post and profile metrics.
