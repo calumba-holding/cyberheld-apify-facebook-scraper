@@ -7,6 +7,7 @@ import {
     isEquivalentFacebookTargetUrl,
     isFacebookLoginOrHomeUrl,
     isFacebookVideoUrl,
+    rewriteFacebookReelUrlToWatchUrl,
     sanitizeFacebookPostUrl,
 } from '../../src/facebook/shared/url.js';
 
@@ -31,9 +32,10 @@ describe('facebook url helpers', () => {
         );
     });
 
-    it('extracts a video id from watch and videos urls', () => {
+    it('extracts a video id from watch, videos, and reel urls', () => {
         expect(extractFacebookVideoId('https://www.facebook.com/watch/?v=627375550054084')).toBe('627375550054084');
         expect(extractFacebookVideoId('https://www.facebook.com/example/videos/627375550054084/')).toBe('627375550054084');
+        expect(extractFacebookVideoId('https://www.facebook.com/reel/627375550054084/')).toBe('627375550054084');
     });
 
     it('rejects non-numeric video ids from watch and videos urls', () => {
@@ -43,8 +45,21 @@ describe('facebook url helpers', () => {
 
     it('detects facebook video urls', () => {
         expect(isFacebookVideoUrl('https://www.facebook.com/watch/?v=627375550054084')).toBe(true);
+        expect(isFacebookVideoUrl('https://www.facebook.com/reel/627375550054084/')).toBe(true);
         expect(isFacebookVideoUrl('https://www.facebook.com/watch/?v=../../tmp/pwned')).toBe(false);
         expect(isFacebookVideoUrl('https://www.facebook.com/example/posts/123')).toBe(false);
+    });
+
+    it('rewrites public reel urls to watch urls while preserving the comment id when present', () => {
+        expect(rewriteFacebookReelUrlToWatchUrl('https://www.facebook.com/reel/1641010317209602/?comment_id=1261563952195229&__tn__=R')).toBe(
+            'https://www.facebook.com/watch/?v=1641010317209602&comment_id=1261563952195229',
+        );
+        expect(rewriteFacebookReelUrlToWatchUrl('https://www.facebook.com/reel/650824614790236')).toBe(
+            'https://www.facebook.com/watch/?v=650824614790236',
+        );
+        expect(rewriteFacebookReelUrlToWatchUrl('https://www.facebook.com/watch/?v=1641010317209602&comment_id=1261563952195229')).toBe(
+            'https://www.facebook.com/watch/?v=1641010317209602&comment_id=1261563952195229',
+        );
     });
 
     it('treats canonical facebook post urls with the same target token as equivalent', () => {

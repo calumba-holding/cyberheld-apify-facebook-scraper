@@ -6,9 +6,18 @@ import type { LaunchBrowserOptions, ProfileLoginOptions, RunScrapeOptions } from
 import { slowlyScrollToTop } from '../common/video-context.js';
 import { COMMENT_REACTIONS_SCRAPER, scrapeCommentReactions } from './scrapers/comment-reactions/index.js';
 import { POST_ENGAGEMENT_SCRAPER, scrapePostEngagement } from './scrapers/post-engagement/index.js';
+import type { GraphqlRequestTemplate } from './scrapers/post-engagement/public-post-api-graphql.js';
+import { tryOpenFacebookPublicPostViaPageRoot } from './scrapers/post-engagement/public-post-api.js';
 import { captureFacebookBlockedPageArtifact } from './shared/block-diagnostics.js';
 import { prepareFacebookGuestPage, warmFacebookPublicSession } from './shared/guest-session.js';
-import { extractFacebookPageRootUrl, isEquivalentFacebookTargetUrl, isFacebookLoginOrHomeUrl, resolveFacebookPostUrl, sanitizeFacebookPostUrl } from './shared/url.js';
+import {
+    extractFacebookPageRootUrl,
+    isEquivalentFacebookTargetUrl,
+    isFacebookLoginOrHomeUrl,
+    resolveFacebookPostUrl,
+    rewriteFacebookReelUrlToWatchUrl,
+    sanitizeFacebookPostUrl,
+} from './shared/url.js';
 import type { FacebookPlugin, FacebookScrapeResult } from './types.js';
 import { getLoginUrl, getProfileDir } from './profile.js';
 
@@ -52,10 +61,18 @@ const runScrape = async (
     };
 
     try {
-        const resolvedEntryUrl = await resolveFacebookPostUrl(targetUrl);
-        if (resolvedEntryUrl !== targetUrl) log.info(`Resolved shared URL to: ${resolvedEntryUrl}`);
+        const resolvedTargetUrl = await resolveFacebookPostUrl(targetUrl);
+        if (resolvedTargetUrl !== targetUrl) log.info(`Resolved shared URL to: ${resolvedTargetUrl}`);
 
-        if (options.browserSessionMode === 'public-session' || options.browserSessionMode === 'guest-session') {
+        const resolvedEntryUrl = options.browserSessionMode === 'public-session'
+            ? rewriteFacebookReelUrlToWatchUrl(resolvedTargetUrl)
+            : resolvedTargetUrl;
+        if (resolvedEntryUrl !== resolvedTargetUrl) {
+            log.info(`Rewrote public Facebook reel URL to watch URL: ${resolvedEntryUrl}`);
+        }
+
+        const shouldWarmBeforeNavigation = !(options.browserSessionMode === 'public-session' && scraper === POST_ENGAGEMENT_SCRAPER);
+        if ((options.browserSessionMode === 'public-session' || options.browserSessionMode === 'guest-session') && shouldWarmBeforeNavigation) {
             await warmFacebookPublicSession(
                 page,
                 extractFacebookPageRootUrl(resolvedEntryUrl) ?? getLoginUrl(),
@@ -63,16 +80,47 @@ const runScrape = async (
             );
         }
 
-        await page.goto(resolvedEntryUrl, {
-            waitUntil: 'domcontentloaded',
-            timeout: options.requestTimeoutSecs * 1000,
-        });
+        let publicPostApiPayload: string | undefined;
+        let publicPostFinalUrl: string | undefined;
+        let publicGraphqlTemplate: GraphqlRequestTemplate | undefined;
+        if (options.browserSessionMode === 'public-session' && scraper === POST_ENGAGEMENT_SCRAPER) {
+            const publicNavigation = await tryOpenFacebookPublicPostViaPageRoot(page, resolvedEntryUrl, options.requestTimeoutSecs * 1000);
+            if (publicNavigation) {
+                publicPostApiPayload = publicNavigation.singlePostPayload?.body;
+                publicPostFinalUrl = publicNavigation.finalUrl;
+            } else {
+                await page.goto(resolvedEntryUrl, {
+                    waitUntil: 'domcontentloaded',
+                    timeout: options.requestTimeoutSecs * 1000,
+                });
+            }
+        } else {
+            const capturePublicTemplate = (request: import('playwright').Request): void => {
+                if (publicGraphqlTemplate || !request.url().includes('/api/graphql/')) return;
+                const params = new URLSearchParams(request.postData() || '');
+                if (params.get('fb_api_req_friendly_name') !== 'ProfileCometTimelineFeedRefetchQuery') return;
+                publicGraphqlTemplate = {
+                    params: Object.fromEntries(params.entries()),
+                    requestCount: 0,
+                };
+            };
+            if (options.browserSessionMode === 'public-session' && scraper === COMMENT_REACTIONS_SCRAPER) {
+                page.on('request', capturePublicTemplate);
+            }
+            await page.goto(resolvedEntryUrl, {
+                waitUntil: 'domcontentloaded',
+                timeout: options.requestTimeoutSecs * 1000,
+            });
+            if (options.browserSessionMode === 'public-session' && scraper === COMMENT_REACTIONS_SCRAPER) {
+                page.off('request', capturePublicTemplate);
+            }
+        }
 
         if (options.browserSessionMode === 'guest-session') {
             await prepareFacebookGuestPage(page);
         }
 
-        const finalUrl = sanitizeFacebookPostUrl(page.url());
+        const finalUrl = publicPostFinalUrl ?? sanitizeFacebookPostUrl(page.url());
         if (finalUrl !== resolvedEntryUrl) log.info(`Facebook navigation landed on: ${finalUrl}`);
         if (!isEquivalentFacebookTargetUrl(resolvedEntryUrl, finalUrl)) {
             const blockedPage = await captureFacebookBlockedPageArtifact(page, finalUrl, options);
@@ -94,10 +142,14 @@ const runScrape = async (
                 itemIndex: options.itemIndex,
                 outputFile: options.outputFile,
                 profileDir: getProfileDir(options.profileRootDir, options.browserSessionMode),
+                publicPostApiPayload,
                 runId: options.runId,
             });
         } else if (scraper === COMMENT_REACTIONS_SCRAPER) {
-            scrapeResult = await scrapeCommentReactions(page, targetUrl, finalUrl, options.waitAfterNavigationMs);
+            scrapeResult = await scrapeCommentReactions(page, targetUrl, finalUrl, options.waitAfterNavigationMs, {
+                browserSessionMode: options.browserSessionMode,
+                publicGraphqlTemplate,
+            });
         } else {
             throw new Error(`Unsupported Facebook scraper: ${scraper}`);
         }

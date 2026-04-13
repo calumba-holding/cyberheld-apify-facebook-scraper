@@ -66,13 +66,36 @@ export const extractFacebookVideoId = (url: string): string | null => {
         if (queryVideoId) return queryVideoId;
 
         const videoMatch = parsed.pathname.match(/\/videos\/([^/?#]+)\/?/i);
-        return normalizeFacebookNumericId(videoMatch?.[1]);
+        if (videoMatch) return normalizeFacebookNumericId(videoMatch[1]);
+
+        const reelMatch = parsed.pathname.match(/\/reel\/([^/?#]+)\/?/i);
+        return normalizeFacebookNumericId(reelMatch?.[1]);
     } catch {
         return null;
     }
 };
 
 export const isFacebookVideoUrl = (url: string): boolean => extractFacebookVideoId(url) !== null;
+
+export const rewriteFacebookReelUrlToWatchUrl = (url: string): string => {
+    try {
+        const parsed = new URL(url);
+        if (!isFacebookHost(parsed.hostname)) return url;
+
+        const reelMatch = parsed.pathname.match(/^\/reel\/([^/?#]+)\/?$/i);
+        const videoId = normalizeFacebookNumericId(reelMatch?.[1]);
+        if (!videoId) return url;
+
+        const rewritten = new URL('/watch/', `${parsed.protocol}//${parsed.host}`);
+        rewritten.searchParams.set('v', videoId);
+
+        const commentId = normalizeFacebookNumericId(parsed.searchParams.get('comment_id'));
+        if (commentId) rewritten.searchParams.set('comment_id', commentId);
+        return rewritten.toString();
+    } catch {
+        return url;
+    }
+};
 
 export const extractFacebookPageRootUrl = (url: string): string | null => {
     try {
