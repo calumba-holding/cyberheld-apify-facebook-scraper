@@ -158,12 +158,13 @@ node dist/main.js \
 The `comment-reactions` scraper:
 - requires a Facebook URL with `?comment_id=...`
 - finds the linked target comment
-- extracts all reactions for that comment only
+- extracts reactions for that comment only
 - does not scrape post reactions
+- for Facebook `--public-session`, first tries an API-first focused-comment path before falling back to DOM modal scraping
 - slowly scrolls back to the top at the end so the video shows the post context
 - fails the result if the target comment cannot be found
 
-For Facebook share/video URLs, the scraper follows the Facebook redirect and continues on the resolved watch or permalink URL. For watch/video `post-engagement` runs, it also downloads the original source video as a per-item artifact when possible unless `--no-download` disables that step. Both Facebook scrapers can also run with `--public-session` or `--guest-session` when the target post is publicly visible.
+For Facebook share/video URLs, the scraper follows the Facebook redirect and continues on the resolved watch or permalink URL. In `--public-session`, reel URLs are also rewritten to the equivalent watch/video URL because the logged-out watch/video surface is usually richer than the logged-out reel surface. Public watch/video `post-engagement` runs now try a GraphQL-first video path before DOM scraping by reading the loaded video's `storyId` and `feedbackId` from Relay, replaying `CometFocusedStoryViewUFIQuery`, paging public comments/replies while Facebook still exposes cursors, merging the watch-surface `TAHOE` pagination queries when available, and repeating that bounded bundle once more to recover some logged-out payload drift. If that still does not produce a usable API result and the DOM comment crawl stays empty, visible comments already present in Relay state can also be merged into the result. For watch/video `post-engagement` runs, it also downloads the original source video as a per-item artifact when possible unless `--no-download` disables that step. Both Facebook scrapers can also run with `--public-session` or `--guest-session` when the target post is publicly visible.
 
 ## Scrape multiple URLs in parallel
 
@@ -236,11 +237,13 @@ The Facebook plugin currently extracts:
 
 The `post-engagement` scraper does not enrich comments with comment-level reactions. Use `comment-reactions` when you need reactions for one specific comment.
 
-`--public-session` is now the recommended no-login mode for publicly visible Facebook posts. It uses a separate persistent profile (default: `~/.scrape/profiles/facebook-public`) so cookie-consent and other non-login session state can survive across runs. `--guest-session` stays available for a fully fresh temporary session.
+`--public-session` is now the recommended no-login mode for publicly visible Facebook posts. It uses a separate persistent profile (default: `~/.scrape/profiles/facebook-public`) so cookie-consent and other non-login session state can survive across runs. For page-scoped public post URLs, the scraper now tries an API-first GraphQL path before DOM scraping: it captures the public feed request template, pages the feed via GraphQL, requests the single-post payload directly, requests the focused-story UFI payload directly, replays `CommentsListComponentsPaginationQuery` for additional public top-level comment pages, replays `Depth1CommentsListPaginationQuery` for publicly visible reply batches, replays `CometUFIReactionsDialogQuery` to populate public per-user post reactions, repeats those first-page reaction samples across bounded passes to absorb public payload instability, and then best-effort tries `CometUFIReactionsDialogTabContentRefetchQuery` for extra reaction pages when Facebook allows that refetch path. `--guest-session` stays available for a fully fresh temporary session.
 
 Both public modes apply a small stealth-hardening layer (`navigator.webdriver`, automation flag reduction, common fingerprint patches). When Facebook redirects the browser away from the requested post to home/login, the run now fails fast with a clear login-wall/bot-check error instead of continuing on the wrong page. Failed items also include blocked-page diagnostics (`artifacts.blockedPage`) with screenshot/html paths when capture succeeds. If Facebook merely hides reactions/comments from public visitors, the item may still end up `PARTIAL`.
 
 A `post-engagement` result may still be marked successful when the post has zero visible comments. For zero post reactions, an empty `post.reactions` array only stays successful when the scraper can positively confirm an explicit zero-reaction state; otherwise the item remains `PARTIAL`.
+
+For Facebook public-session page-post and watch/video runs, a `PARTIAL` item may now still include useful API-derived data such as post text, aggregate reaction totals, public per-user reaction samples, multiple paged batches of visible public top-level comments, and publicly visible reply batches even when Facebook does not expose the full per-user reaction list, blocks the reaction refetch query for logged-out sessions, or withholds an unfiltered all-comments view.
 
 ## Instagram post-engagement output
 

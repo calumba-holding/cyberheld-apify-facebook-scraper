@@ -112,11 +112,12 @@ Preferred approach:
 
 ## Scraper-specific status note
 
-The `comment-reactions` scraper may report `SUCCEEDED` while leaving post reactions empty, because its success condition is finding the target comment and extracting that comment's reactions rather than scraping the post reaction list.
+The `comment-reactions` scraper may report `SUCCEEDED` while leaving post reactions empty, because its success condition is finding the target comment and extracting that comment's reactions rather than scraping the post reaction list. For Facebook `public-session` comment deep links, it may also report `PARTIAL` when the target comment and its aggregate reaction data are available but the logged-out reaction-user list is only partially exposed.
 
 The `post-engagement` scraper returns comments without `comments[].reactions`; it extracts post reactions only.
 For Facebook watch/video runs, `post.url` should reflect the resolved watch or video permalink after Facebook redirects, not the original share URL.
 Facebook public-session runs report `run.browserSession = 'public-session'` while keeping `results[].scrape.browser = 'persistent-chrome-profile'` because they still use a persistent Chrome profile.
+For Facebook page-post public-session runs, an API-first fallback may return `PARTIAL` with a non-zero `post.reactionSummary.total` while `post.reactions` contains only the currently reachable public per-user reaction samples from the public reactions dialog GraphQL path rather than a guaranteed full reactor list. The scraper repeats those first-page reaction samples across bounded passes to recover some public ordering drift and also best-effort tries the reactions-dialog refetch query when the first page exposes a next cursor, but logged-out sessions may still receive `Unauthorized logged out query` and remain partial. The same public API-first path may still populate multiple visible top-level comment pages and visible reply batches via GraphQL pagination even though `completeness.allCommentsFilterApplied` remains `false`.
 Facebook guest-session runs report `run.browserSession = 'guest-session'` and `results[].scrape.browser = 'guest-chrome-session'`.
 When Facebook redirects a public/guest session away from the requested target, failed items may include `artifacts.blockedPage` with screenshot/html diagnostics for the blocked page.
 

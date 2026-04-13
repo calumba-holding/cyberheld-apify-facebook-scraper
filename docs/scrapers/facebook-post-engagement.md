@@ -58,6 +58,25 @@ Current implementation treats an item as:
 
 `--public-session` keeps the same scraper behavior and output contract but runs inside a dedicated persistent non-login Facebook profile.
 Use it as the preferred no-login mode for publicly visible posts when you want cookie-consent and other non-login state to survive across runs.
+For public reel URLs, the scraper first rewrites the reel to the equivalent watch/video URL because Facebook's logged-out watch/video surface exposes richer public post/comment data than the reel surface. For public watch/video post-engagement runs, the scraper now also tries a GraphQL-first video path before DOM scraping by reading the loaded video's `storyId` and `feedbackId` from Relay, requesting `CometFocusedStoryViewUFIQuery` directly, replaying public top-level comment pagination, replaying visible reply pagination, and additionally merging the watch-surface `TAHOE` comment/reply pagination queries when Facebook exposes those watch-specific cursors. If that still does not yield a usable API result and the DOM comment crawl stays empty, the scraper falls back to merging any visible public Relay comments already present on the page into the final result.
+
+For page-scoped public post URLs, the scraper now tries an API-first path before DOM scraping:
+- warm a logged-out public session on the page root
+- capture the public `ProfileCometTimelineFeedRefetchQuery` request template
+- find the target post in the public feed payload, paging that feed via GraphQL when needed
+- request `CometSinglePostDialogContentQuery` directly via GraphQL using the captured public-session parameters
+- then request `CometFocusedStoryViewUFIQuery` directly via GraphQL to maximize the public comment/reaction totals available without opening the dialog through the DOM
+- when the focused-story payload reports more public top-level comments, replay `CommentsListComponentsPaginationQuery` directly via GraphQL to collect the extra visible public comment pages
+- when public top-level comments expose reply expansion tokens, replay `Depth1CommentsListPaginationQuery` directly via GraphQL to collect the visible public reply batches
+- replay `CometUFIReactionsDialogQuery` directly via GraphQL to collect public per-user post reaction entries and reaction-specific first-page samples
+- repeat those public first-page reaction queries across bounded passes and merge/deduplicate the samples because Facebook's logged-out reactor ordering can drift between passes
+- best-effort replay `CometUFIReactionsDialogTabContentRefetchQuery` when the reactions payload exposes a next cursor; if Facebook allows the refetch path, merge extra reaction-user pages into `post.reactions`
+
+Current API-first limitations:
+- it returns public post text, public reaction totals, public per-user reaction entries, and the visible comment payload that Facebook exposes to the logged-out session, including additional paged top-level comment batches and visible reply batches when the public pagination queries are available; on watch/video surfaces this now also includes repeated pagination passes until the exposed public cursors are exhausted or the bounded safety limit is reached, plus a second bounded bundle pass to absorb logged-out payload drift between requests
+- post reaction-user extraction is still best-effort because Facebook often blocks the reactions refetch query for logged-out sessions with `Unauthorized logged out query`, leaving only the first visible page for each reaction bucket available
+- it does not yet guarantee `All comments`, so `completeness.allCommentsFilterApplied` stays `false`
+- because of those limits, successful API-first public-session items are currently expected to be `PARTIAL`
 
 ## Guest-session note
 
