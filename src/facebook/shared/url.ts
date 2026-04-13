@@ -7,31 +7,23 @@ const normalizeFacebookPath = (value: string): string => {
 };
 
 const getFacebookPathSegments = (url: string): string[] => {
-    try {
-        return new URL(url).pathname.split('/').map((segment) => segment.trim()).filter(Boolean);
-    } catch {
-        return [];
-    }
+    if (!URL.canParse(url)) return [];
+    return new URL(url).pathname.split('/').map((segment) => segment.trim()).filter(Boolean);
 };
-
 const isFacebookHost = (hostname: string): boolean => FACEBOOK_HOST_PATTERN.test(hostname);
 
 const extractFacebookTargetToken = (url: string): string | null => {
-    try {
-        const videoId = extractFacebookVideoId(url);
-        if (videoId) return videoId;
+    const videoId = extractFacebookVideoId(url);
+    if (videoId) return videoId;
 
-        const segments = getFacebookPathSegments(url);
-        for (let index = segments.length - 1; index >= 0; index--) {
-            const segment = segments[index];
-            if (!segment || GENERIC_FACEBOOK_PATH_SEGMENTS.has(segment.toLowerCase())) continue;
-            return segment;
-        }
-
-        return null;
-    } catch {
-        return null;
+    const segments = getFacebookPathSegments(url);
+    for (let index = segments.length - 1; index >= 0; index--) {
+        const segment = segments[index];
+        if (!segment || GENERIC_FACEBOOK_PATH_SEGMENTS.has(segment.toLowerCase())) continue;
+        return segment;
     }
+
+    return null;
 };
 
 export const sanitizeFacebookPostUrl = (url: string): string => {
@@ -46,12 +38,9 @@ export const sanitizeFacebookPostUrl = (url: string): string => {
 };
 
 export const extractCommentIdFromFacebookUrl = (url: string): string | null => {
-    try {
-        const commentId = new URL(url).searchParams.get('comment_id')?.trim();
-        return commentId ? commentId : null;
-    } catch {
-        return null;
-    }
+    if (!URL.canParse(url)) return null;
+    const commentId = new URL(url).searchParams.get('comment_id')?.trim();
+    return commentId ? commentId : null;
 };
 
 const normalizeFacebookNumericId = (value: string | null | undefined): string | null => {

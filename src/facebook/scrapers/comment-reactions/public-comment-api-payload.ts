@@ -1,4 +1,5 @@
 import type { CommentReactionDetails, CommentReactionUser } from '../../../common/types.js';
+import { log } from '../../../common/logger.js';
 import { normalizeProfileUrl } from '../../reaction-helpers.js';
 
 type JsonValue = null | boolean | number | string | JsonObject | JsonValue[];
@@ -44,14 +45,22 @@ const getPath = (input: JsonObject | null, path: readonly string[]): JsonValue |
 
 const parseJsonLines = (payload: string): JsonObject[] => {
     const chunks: JsonObject[] = [];
+    let malformedLineCount = 0;
+
     for (const line of payload.split('\n').map((part) => part.trim()).filter(Boolean)) {
         try {
             const object = asObject(JSON.parse(line) as JsonValue);
             if (object) chunks.push(object);
+            else malformedLineCount += 1;
         } catch {
-            // Ignore malformed chunks.
+            malformedLineCount += 1;
         }
     }
+
+    if (malformedLineCount > 0) {
+        log.warning(`Ignored ${String(malformedLineCount)} malformed public comment reaction payload chunks.`);
+    }
+
     return chunks;
 };
 

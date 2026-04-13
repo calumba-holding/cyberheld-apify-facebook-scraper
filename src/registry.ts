@@ -14,7 +14,3 @@ export const getTargetPlugin = (target: SupportedTarget): TargetPlugin => plugin
 export const isSupportedTarget = (value: string): value is SupportedTarget => {
     return value in plugins;
 };
-
-export const isSupportedScraperForTarget = (target: SupportedTarget, scraper: string): boolean => {
-    return getTargetPlugin(target).scrapers.includes(scraper);
-};

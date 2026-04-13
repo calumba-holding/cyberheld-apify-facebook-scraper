@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildFailedOutput, buildRunOutput, buildSuccessOutput } from '../../src/facebook/output-item.js';
+import { buildFailedOutput, buildRunOutput, buildSuccessOutput } from '../../src/common/output-item.js';
 import type { FacebookScrapeResult } from '../../src/facebook/types.js';
 import type { ProfileScrapeResult } from '../../src/common/types.js';
 

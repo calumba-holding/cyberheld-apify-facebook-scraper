@@ -14,11 +14,8 @@ const commentContainsTargetId = async (comment: Locator, targetCommentId: string
         const article = node as HTMLElement;
         const links = Array.from(article.querySelectorAll<HTMLAnchorElement>('a[href*="comment_id="]'));
         return links.some((link) => {
-            try {
-                return new URL(link.href).searchParams.get('comment_id') === expectedCommentId;
-            } catch {
-                return false;
-            }
+            if (!URL.canParse(link.href, location.href)) return false;
+            return new URL(link.href, location.href).searchParams.get('comment_id') === expectedCommentId;
         });
     }, targetCommentId).catch(() => false);
 };

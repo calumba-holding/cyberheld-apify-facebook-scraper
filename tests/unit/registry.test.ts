@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getTargetPlugin, isSupportedScraperForTarget, isSupportedTarget, SUPPORTED_TARGETS } from '../../src/registry.js';
+import { getTargetPlugin, isSupportedTarget, SUPPORTED_TARGETS } from '../../src/registry.js';
 
 describe('registry', () => {
     it('returns the list of supported targets in declaration order', () => {
@@ -29,10 +29,8 @@ describe('registry', () => {
         expect(getTargetPlugin('instagram').scrapers).toEqual(['post-engagement', 'profile-scraper']);
     });
 
-    it('returns true when the scraper is supported for the target', () => {
-        expect(isSupportedScraperForTarget('facebook', 'post-engagement')).toBe(true);
-        expect(isSupportedScraperForTarget('facebook', 'comment-reactions')).toBe(true);
-        expect(isSupportedScraperForTarget('instagram', 'post-engagement')).toBe(true);
-        expect(isSupportedScraperForTarget('instagram', 'profile-scraper')).toBe(true);
+    it('declares supported scrapers on each target plugin', () => {
+        expect(getTargetPlugin('facebook').scrapers).toEqual(['post-engagement', 'comment-reactions']);
+        expect(getTargetPlugin('instagram').scrapers).toEqual(['post-engagement', 'profile-scraper']);
     });
 });

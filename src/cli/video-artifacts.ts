@@ -1,7 +1,7 @@
 import { copyFile, mkdir, readdir, rename, stat, unlink } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { log } from '../common/logger.js';
-import type { VideoArtifact } from '../facebook/output-item.js';
+import type { VideoArtifact } from '../common/output-item.js';
 import type { RunCliOptions } from './types.js';
 
 const ensureParentDirectory = async (filePath: string): Promise<void> => {

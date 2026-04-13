@@ -108,9 +108,12 @@ const collectUsersFromCurrentTab = async (modal: Locator, reaction: string): Pro
     return links.evaluateAll((nodes, currentReaction) => {
         const isVisible = (element: Element): element is HTMLElement => {
             if (!(element instanceof HTMLElement)) return false;
-            const style = window.getComputedStyle(element);
             const rect = element.getBoundingClientRect();
-            return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+            if (rect.width <= 0 || rect.height <= 0) return false;
+            const style = window.getComputedStyle(element);
+            if (style.display === 'none' || style.visibility === 'hidden') return false;
+            if (style.pointerEvents === 'none') return false;
+            return !(element.hidden || element.getAttribute('aria-hidden') === 'true');
         };
 
         const results: ReactionUser[] = [];

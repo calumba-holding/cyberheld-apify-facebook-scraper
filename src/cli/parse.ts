@@ -1,5 +1,5 @@
 import { defaultArtifactRootDir, defaultChromeExecutable, defaultProfileRootDir, helpText } from './help.js';
-import { isSupportedScraperForTarget, isSupportedTarget, SUPPORTED_TARGETS } from '../registry.js';
+import { getTargetPlugin, isSupportedTarget, SUPPORTED_TARGETS } from '../registry.js';
 import type { BrowserSessionMode, SupportedTarget } from '../common/types.js';
 import type { ParsedCli, ProfileLoginCliOptions, ProfilePathCliOptions, RunCliOptions } from './types.js';
 
@@ -26,11 +26,8 @@ const takeValue = (args: string[], index: number, name: string): string => {
 };
 
 const ensureUrl = (value: string): string => {
-    try {
-        return new URL(value).toString();
-    } catch {
-        throw new Error('--target-url must be a valid URL.');
-    }
+    if (!URL.canParse(value)) throw new Error('--target-url must be a valid URL.');
+    return new URL(value).toString();
 };
 
 const parseTargetFlag = (args: string[], index: number): SupportedTarget => {
@@ -162,7 +159,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     if (!target) throw new Error('Missing required flag: --target');
     if (!scraper) throw new Error('Missing required flag: --scraper');
     if (targetUrls.length === 0) throw new Error('Missing required flag: --target-url');
-    if (!isSupportedScraperForTarget(target, scraper)) {
+    if (!getTargetPlugin(target).scrapers.includes(scraper)) {
         throw new Error(`Unsupported scraper for ${target}: ${scraper}`);
     }
     if (browserSessionMode !== 'persistent-profile' && target !== 'facebook') {

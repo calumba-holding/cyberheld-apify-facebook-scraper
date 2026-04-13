@@ -21,9 +21,11 @@ const locateFilterCandidate = async (scope: Locator): Promise<PointCandidate | n
         const normalize = (value: string | null | undefined): string => (value || '').replace(/\s+/g, ' ').trim().toLowerCase();
         const isVisible = (element: Element | null): element is HTMLElement => {
             if (!(element instanceof HTMLElement)) return false;
-            const style = window.getComputedStyle(element);
+            if (element.hidden || element.getAttribute('aria-hidden') === 'true') return false;
             const rect = element.getBoundingClientRect();
-            return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+            if (rect.width <= 0 || rect.height <= 0) return false;
+            const style = window.getComputedStyle(element);
+            return style.display !== 'none' && style.visibility !== 'hidden';
         };
 
         const headingTop = Array.from(root.querySelectorAll(headingSelector))
@@ -83,9 +85,11 @@ const locateAllCommentsOption = async (page: Page, anchor: PointCandidate): Prom
         const normalize = (value: string | null | undefined): string => (value || '').replace(/\s+/g, ' ').trim().toLowerCase();
         const isVisible = (element: Element | null): element is HTMLElement => {
             if (!(element instanceof HTMLElement)) return false;
-            const style = window.getComputedStyle(element);
             const rect = element.getBoundingClientRect();
-            return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+            if (rect.width <= 0 || rect.height <= 0) return false;
+            const style = window.getComputedStyle(element);
+            if (style.display === 'none' || style.visibility === 'hidden') return false;
+            return style.opacity !== '0';
         };
 
         const selectors = ['[role="menuitemradio"]', '[role="menuitem"]', '[role="option"]', '[role="button"]', 'a', 'li', 'span'];
