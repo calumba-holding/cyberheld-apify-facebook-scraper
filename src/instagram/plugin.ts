@@ -8,7 +8,11 @@ import { PROFILE_SCRAPER, scrapeProfile } from './scrapers/profile-scraper/index
 import type { InstagramPlugin, InstagramScrapeResult } from './types.js';
 import { getLoginUrl, getProfileDir } from './profile.js';
 
-const launchPersistentBrowser = async (options: LaunchBrowserOptions): Promise<BrowserContext> => {
+const launchBrowser = async (options: LaunchBrowserOptions): Promise<BrowserContext> => {
+    if (options.browserSessionMode === 'guest-session') {
+        throw new Error('Instagram scraping requires the persistent target profile.');
+    }
+
     return launchPersistentChromeContext({
         profileDir: getProfileDir(options.profileRootDir),
         executablePath: options.chromeExecutable,
@@ -17,7 +21,7 @@ const launchPersistentBrowser = async (options: LaunchBrowserOptions): Promise<B
 };
 
 const openProfileLoginBrowser = async (options: ProfileLoginOptions): Promise<BrowserContext> => {
-    const context = await launchPersistentBrowser(options);
+    const context = await launchBrowser({ ...options, browserSessionMode: 'persistent-profile' });
     const page = context.pages()[0] ?? await context.newPage();
     await page.goto(getLoginUrl(), { waitUntil: 'domcontentloaded', timeout: 30_000 });
     return context;
@@ -54,7 +58,7 @@ export const instagramPlugin: InstagramPlugin = {
     target: 'instagram',
     scrapers: [POST_ENGAGEMENT_SCRAPER, PROFILE_SCRAPER],
     getProfileDir,
-    launchPersistentBrowser,
+    launchBrowser,
     openProfileLoginBrowser,
     runScrape,
 };

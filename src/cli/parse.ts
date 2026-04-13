@@ -1,6 +1,6 @@
 import { defaultArtifactRootDir, defaultChromeExecutable, defaultProfileRootDir, helpText } from './help.js';
 import { isSupportedScraperForTarget, isSupportedTarget, SUPPORTED_TARGETS } from '../registry.js';
-import type { SupportedTarget } from '../common/types.js';
+import type { BrowserSessionMode, SupportedTarget } from '../common/types.js';
 import type { ParsedCli, ProfileLoginCliOptions, ProfilePathCliOptions, RunCliOptions } from './types.js';
 
 const parseBooleanEnv = (value: string | undefined, fallback: boolean): boolean => {
@@ -85,6 +85,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     let target: SupportedTarget | undefined;
     let scraper: string | undefined;
     const targetUrls: string[] = [];
+    let browserSessionMode: BrowserSessionMode = 'persistent-profile';
     let screenVideo = parseBooleanEnv(process.env.SCRAPE_SCREEN_VIDEO, true);
     let download = true;
     let outputFile: string | undefined;
@@ -114,6 +115,12 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
             case '--concurrency':
                 concurrency = parseInteger(takeValue(argv, index, '--concurrency'), 'concurrency', 1, 16);
                 index += 1;
+                break;
+            case '--public-session':
+                browserSessionMode = 'public-session';
+                break;
+            case '--guest-session':
+                browserSessionMode = 'guest-session';
                 break;
             case '--screen-video':
                 screenVideo = true;
@@ -158,6 +165,9 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     if (!isSupportedScraperForTarget(target, scraper)) {
         throw new Error(`Unsupported scraper for ${target}: ${scraper}`);
     }
+    if (browserSessionMode !== 'persistent-profile' && target !== 'facebook') {
+        throw new Error('--public-session and --guest-session are currently supported only for --target facebook.');
+    }
 
     return {
         command: 'run',
@@ -165,6 +175,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
         scraper,
         targetUrls,
         concurrency,
+        browserSessionMode,
         screenVideo,
         download,
         outputFile,

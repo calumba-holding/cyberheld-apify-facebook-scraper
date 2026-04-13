@@ -35,6 +35,7 @@ describe('buildSuccessOutput', () => {
         const output = buildSuccessOutput(buildResult(), 'job-1');
 
         expect(output.scrape.status).toBe('SUCCEEDED');
+        expect(output.scrape.browser).toBe('persistent-chrome-profile');
         expect(output.completeness).toEqual({
             allCommentsFilterApplied: true,
             commentsExtracted: true,
@@ -75,6 +76,12 @@ describe('buildSuccessOutput', () => {
         expect(output.scrape.status).toBe('PARTIAL');
         expect(output.completeness.postReactionsExtracted).toBe(false);
         expect(output.post.reactions).toEqual([]);
+    });
+
+    it('uses the guest browser label for guest-session runs', () => {
+        const output = buildSuccessOutput(buildResult(), 'job-guest', 'guest-session');
+
+        expect(output.scrape.browser).toBe('guest-chrome-session');
     });
 
     it('respects an explicit scraper status override', () => {
@@ -132,10 +139,38 @@ describe('buildFailedOutput', () => {
         const output = buildFailedOutput('https://www.facebook.com/example/posts/123', 'job-3', 'Navigation timed out');
 
         expect(output.scrape.status).toBe('FAILED');
+        expect(output.scrape.browser).toBe('persistent-chrome-profile');
         expect(output.scrape.error).toBe('Navigation timed out');
         expect(output.post.reactionSummary.total).toBe(0);
         expect(output.post.reactions).toEqual([]);
         expect(output.comments).toEqual([]);
+    });
+
+    it('uses the guest browser label for guest-session failures', () => {
+        const output = buildFailedOutput('https://www.facebook.com/example/posts/123', 'job-guest-fail', 'Blocked', 'guest-session');
+
+        expect(output.scrape.browser).toBe('guest-chrome-session');
+    });
+
+    it('includes blocked-page diagnostics when a redirect/login-wall artifact was captured', () => {
+        const output = buildFailedOutput(
+            'https://www.facebook.com/example/posts/123',
+            'job-blocked',
+            'Blocked',
+            'public-session',
+            {
+                finalUrl: 'https://www.facebook.com/',
+                screenshot: { localPath: '/tmp/run-1_item-1_blocked-page.png' },
+                html: { localPath: '/tmp/run-1_item-1_blocked-page.html' },
+            },
+        );
+
+        expect(output.scrape.browser).toBe('persistent-chrome-profile');
+        expect(output.artifacts?.blockedPage).toEqual({
+            finalUrl: 'https://www.facebook.com/',
+            screenshot: { localPath: '/tmp/run-1_item-1_blocked-page.png' },
+            html: { localPath: '/tmp/run-1_item-1_blocked-page.html' },
+        });
     });
 });
 
@@ -145,6 +180,7 @@ describe('buildRunOutput', () => {
             'facebook',
             'post-engagement',
             '/tmp/profiles/facebook',
+            'persistent-profile',
             'run-1',
             '2026-03-22T10:00:00.000Z',
             '2026-03-22T10:05:00.000Z',
@@ -165,5 +201,6 @@ describe('buildRunOutput', () => {
         });
         expect(runOutput.run.requestedUrls).toBe(3);
         expect(runOutput.run.concurrency).toBe(2);
+        expect(runOutput.run.browserSession).toBe('persistent-profile');
     });
 });

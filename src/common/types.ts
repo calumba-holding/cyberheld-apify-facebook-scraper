@@ -1,12 +1,14 @@
 import type { BrowserContext } from 'playwright';
 
 export type SupportedTarget = 'facebook' | 'instagram';
+export type BrowserSessionMode = 'persistent-profile' | 'public-session' | 'guest-session';
 
 export interface RunScrapeOptions {
     runId: string;
     itemIndex: number;
     outputFile?: string;
     artifactRootDir: string;
+    browserSessionMode: BrowserSessionMode;
     chromeExecutable: string;
     profileRootDir: string;
     waitAfterNavigationMs: number;
@@ -21,6 +23,7 @@ export interface ProfileLoginOptions {
 }
 
 export interface LaunchBrowserOptions {
+    browserSessionMode: BrowserSessionMode;
     chromeExecutable: string;
     profileRootDir: string;
     recordVideoDir?: string;
@@ -68,6 +71,12 @@ export interface ScrapedComment {
 
 export interface LocalFileArtifact {
     localPath: string;
+}
+
+export interface BlockedPageArtifact {
+    finalUrl: string;
+    screenshot?: LocalFileArtifact;
+    html?: LocalFileArtifact;
 }
 
 export type ScreenshotArtifact = LocalFileArtifact;
@@ -118,8 +127,8 @@ export type ScrapeResult = EngagementScrapeResult | ProfileScrapeResult;
 export interface TargetPlugin<TResult extends BaseScrapeResult = ScrapeResult> {
     target: SupportedTarget;
     scrapers: readonly string[];
-    getProfileDir: (profileRootDir?: string) => string;
-    launchPersistentBrowser: (options: LaunchBrowserOptions) => Promise<BrowserContext>;
+    getProfileDir: (profileRootDir?: string, browserSessionMode?: BrowserSessionMode) => string;
+    launchBrowser: (options: LaunchBrowserOptions) => Promise<BrowserContext>;
     openProfileLoginBrowser: (options: ProfileLoginOptions) => Promise<BrowserContext>;
     runScrape: (context: BrowserContext, scraper: string, targetUrl: string, options: RunScrapeOptions) => Promise<TResult>;
 }

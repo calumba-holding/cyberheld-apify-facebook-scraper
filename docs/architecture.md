@@ -2,7 +2,7 @@
 
 ## Design principles
 
-- **Local-first**: the CLI runs on the user's machine, reuses persistent browser profiles, and does not depend on a cloud runtime.
+- **Local-first**: the CLI runs on the user's machine, uses persistent browser profiles by default, supports temporary guest sessions when a target allows it, and does not depend on a cloud runtime.
 - **Convention-first**: targets, scrapers, docs, and tests should live in predictable paths.
 - **Thin orchestration**: CLI and target entrypoints coordinate work; extraction logic lives in focused helper modules.
 - **Stable contracts**: stdout JSON, exit codes, and artifact behavior must remain predictable across scraper additions.
@@ -69,7 +69,7 @@ A scraper should follow this flow:
 
 1. Parse CLI input in `src/cli/`
 2. Resolve target plugin via `src/registry.ts`
-3. Launch persistent browser context for the target
+3. Launch the target browser context for the selected session mode
 4. Route to the selected scraper implementation
 5. Run scraper-specific extraction logic
 6. Map to the stable output contract

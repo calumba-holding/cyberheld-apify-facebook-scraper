@@ -3,7 +3,7 @@ import { mkdir, stat, unlink } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { log } from '../../common/logger.js';
-import type { LocalFileArtifact, RunScrapeOptions } from '../../common/types.js';
+import type { BrowserSessionMode, LocalFileArtifact, RunScrapeOptions } from '../../common/types.js';
 import { extractFacebookVideoId } from './url.js';
 
 export interface FacebookSourceVideoDownload {
@@ -94,6 +94,7 @@ const waitForProcess = (child: ChildProcess, targetPath: string): Promise<LocalF
 export const startFacebookSourceVideoDownload = async (
     finalUrl: string,
     profileDir: string,
+    browserSessionMode: BrowserSessionMode,
     options: Pick<RunScrapeOptions, 'artifactRootDir' | 'itemIndex' | 'outputFile' | 'runId'>,
 ): Promise<FacebookSourceVideoDownload | null> => {
     const videoId = extractFacebookVideoId(finalUrl);
@@ -102,7 +103,7 @@ export const startFacebookSourceVideoDownload = async (
     const targetPath = await resolveSourceVideoTargetPath(options, videoId);
     log.info(`Starting Facebook source-video download for video ${videoId}.`);
 
-    const child = spawn('yt-dlp', [
+    const args = [
         '--no-warnings',
         '--no-progress',
         '--no-part',
@@ -112,12 +113,13 @@ export const startFacebookSourceVideoDownload = async (
         'mp4',
         '-f',
         'bv*+ba/b',
-        '--cookies-from-browser',
-        `chrome:${profileDir}`,
-        '-o',
-        targetPath,
-        finalUrl,
-    ], {
+    ];
+    if (browserSessionMode === 'persistent-profile') {
+        args.push('--cookies-from-browser', `chrome:${profileDir}`);
+    }
+    args.push('-o', targetPath, finalUrl);
+
+    const child = spawn('yt-dlp', args, {
         stdio: ['ignore', 'ignore', 'pipe'],
     });
     const download = waitForProcess(child, targetPath);
