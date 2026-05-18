@@ -16,6 +16,7 @@ Scrape engagement data for a Facebook post using the authenticated persistent Ch
 - attempts to switch to the "All comments" filter
 - extracts post reactions
 - for Facebook watch/video pages, downloads the original source video as an item artifact in parallel with the scrape unless `--no-download` disables it
+- when the self-healing LLM path generates or repairs a script, captures the sanitized HTML snapshot and a full-page screenshot as item diagnostics
 - does not enrich comments with comment-level reactions
 
 ## Inputs
@@ -44,6 +45,7 @@ A successful item includes:
 - `post.reactions`
 - `comments[]`
 - `artifacts.sourceVideo.localPath` for watch/video runs when the original video download is enabled and succeeds
+- `artifacts.selfHealing[]` when the run generated or repaired a saved extraction script
 
 The scraper returns comments without `comments[].reactions`. Use `comment-reactions` for single-comment reaction extraction.
 

@@ -48,6 +48,8 @@ result.artifacts.sourceVideo = {
 
 The source-video artifact does not replace or alter the run-level screen-recording lifecycle. It may be suppressed per run with `--no-download`.
 
+Self-healing script generation/repair may additionally expose per-item screenshot and HTML diagnostics under `result.artifacts.selfHealing[]`. These diagnostics are separate from the run-level screen recording and are captured only when the LLM generation/repair path runs.
+
 ## Recorded-flow note
 
 When browser video is enabled, scrapers may add small end-of-run navigation behavior for video clarity. Current behavior includes a slow scroll back to the top after extraction so the recording ends with the surrounding post context visible.

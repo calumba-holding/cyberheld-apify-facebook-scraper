@@ -12,3 +12,9 @@ runs
 
 # Added by Apify CLI
 .venv
+
+# Local environment — never commit
+.env
+
+# Generated extraction scripts — local to each machine
+scripts.json

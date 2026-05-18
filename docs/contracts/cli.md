@@ -46,6 +46,7 @@ node dist/main.js [scrape] profile path --target <target>
 - `--profile-root-dir <dir>`
 - `--wait-after-navigation-ms <ms>`
 - `--request-timeout-secs <s>`
+- `--regenerate-script` (skip the saved self-healing extraction script for this run)
 - `--verbose`
 - `-h`, `--help`
 - `--version`
@@ -88,6 +89,10 @@ Current scraper-specific requirement:
 - target names: lowercase kebab-case or single token (`facebook`)
 - scraper names: lowercase kebab-case (`post-engagement`, `comment-reactions`)
 - environment variables: `SCRAPE_*`
+
+Current self-healing script generation variables:
+- `SCRAPE_LLM_API_KEY`: Google AI API key used only when generating or repairing a saved extraction script
+- `SCRAPE_LLM_MODEL`: optional Gemini model override for script generation
 
 ## Adding a new scraper
 
