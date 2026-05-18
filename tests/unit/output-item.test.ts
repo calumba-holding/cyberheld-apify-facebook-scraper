@@ -70,6 +70,24 @@ describe('buildSuccessOutput', () => {
         expect(output.artifacts?.sourceVideo).toEqual({ localPath: '/tmp/run-1_item-1_video-627375550054084.mp4' });
     });
 
+    it('includes self-healing diagnostic artifacts when a script was generated or repaired', () => {
+        const output = buildSuccessOutput(buildResult({
+            selfHealing: [{
+                action: 'repair',
+                status: 'saved',
+                screenshot: { localPath: '/tmp/run-1/self-healing/item-1_repair.png' },
+                html: { localPath: '/tmp/run-1/self-healing/item-1_repair.html' },
+            }],
+        }), 'job-self-healing');
+
+        expect(output.artifacts?.selfHealing).toEqual([{
+            action: 'repair',
+            status: 'saved',
+            screenshot: { localPath: '/tmp/run-1/self-healing/item-1_repair.png' },
+            html: { localPath: '/tmp/run-1/self-healing/item-1_repair.html' },
+        }]);
+    });
+
     it('returns PARTIAL when post reaction extraction did not complete', () => {
         const output = buildSuccessOutput(buildResult({ reactionCount: 0, reactions: [], postReactionsComplete: false }), 'job-2b');
 
