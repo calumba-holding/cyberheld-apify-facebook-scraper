@@ -2,76 +2,12 @@ import type {
     BlockedPageArtifact,
     BrowserSessionMode,
     EngagementScrapeResult,
-    LocalFileArtifact,
-    ProfileData,
-    ReactionUser,
-    ScreenshotArtifact,
     ScrapeResult,
-    ScrapedComment,
     SupportedTarget,
 } from './types.js';
+import type { ScrapeBrowser, ScrapeItemOutput, ScrapeRunOutput, VideoArtifact } from './output-types.js';
 
-export type VideoArtifact = {
-    present: boolean;
-    localPath?: string;
-};
-
-export type ScrapeBrowser = 'persistent-chrome-profile' | 'guest-chrome-session';
-
-export type ScrapeItemOutput = {
-    input: { targetUrl: string };
-    scrape: {
-        jobId: string;
-        status: 'SUCCEEDED' | 'PARTIAL' | 'FAILED';
-        scrapedAt: string;
-        runtime: 'cli';
-        browser: ScrapeBrowser;
-        error?: string;
-    };
-    completeness?: {
-        allCommentsFilterApplied: boolean;
-        commentsExtracted: boolean;
-        postReactionsExtracted: boolean;
-    };
-    post?: {
-        url: string;
-        content?: string;
-        reactionSummary: { total: number };
-        reactions: ReactionUser[];
-    };
-    comments?: ScrapedComment[];
-    profile?: ProfileData;
-    artifacts?: {
-        screenshots?: ScreenshotArtifact[];
-        sourceVideo?: LocalFileArtifact;
-        blockedPage?: {
-            finalUrl: string;
-            screenshot?: LocalFileArtifact;
-            html?: LocalFileArtifact;
-        };
-    };
-};
-
-export type ScrapeRunOutput = {
-    target: SupportedTarget;
-    scraper: string;
-    profileDir: string;
-    run: {
-        runId: string;
-        startedAt: string;
-        finishedAt: string;
-        concurrency: number;
-        requestedUrls: number;
-        browserSession: BrowserSessionMode;
-    };
-    summary: {
-        succeeded: number;
-        partial: number;
-        failed: number;
-    };
-    artifacts: { video: VideoArtifact };
-    results: ScrapeItemOutput[];
-};
+export type { ScrapeBrowser, ScrapeItemOutput, ScrapeRunOutput, VideoArtifact } from './output-types.js';
 
 const resolveBrowserLabel = (browserSessionMode: BrowserSessionMode): ScrapeBrowser => {
     return browserSessionMode === 'guest-session' ? 'guest-chrome-session' : 'persistent-chrome-profile';
@@ -99,6 +35,13 @@ const toStatus = (result: ScrapeResult): 'SUCCEEDED' | 'PARTIAL' => {
     const postReactionsComplete = resolvePostReactionsComplete(result);
     if (commentsComplete && postReactionsComplete) return 'SUCCEEDED';
     return 'PARTIAL';
+};
+
+const buildEngagementArtifacts = (result: EngagementScrapeResult): ScrapeItemOutput['artifacts'] | undefined => {
+    const artifacts: ScrapeItemOutput['artifacts'] = {};
+    if (result.sourceVideo) artifacts.sourceVideo = result.sourceVideo;
+    if (result.selfHealing?.length) artifacts.selfHealing = result.selfHealing;
+    return Object.keys(artifacts).length > 0 ? artifacts : undefined;
 };
 
 export const buildSuccessOutput = (
@@ -139,7 +82,7 @@ export const buildSuccessOutput = (
             reactions: result.reactions,
         },
         comments: result.comments,
-        artifacts: result.sourceVideo ? { sourceVideo: result.sourceVideo } : undefined,
+        artifacts: buildEngagementArtifacts(result),
     };
 };
 

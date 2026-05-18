@@ -16,6 +16,7 @@ export interface RunCliOptions {
     requestTimeoutSecs: number;
     verbose: boolean;
     artifactRootDir: string;
+    regenerateScript: boolean;
 }
 
 export interface ProfileLoginCliOptions {

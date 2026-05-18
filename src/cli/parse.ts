@@ -93,6 +93,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     let concurrency = parseInteger(process.env.SCRAPE_CONCURRENCY ?? '1', 'concurrency', 1, 16);
     const artifactRootDir = process.env.SCRAPE_ARTIFACT_ROOT_DIR ?? defaultArtifactRootDir;
     let verbose = false;
+    let regenerateScript = false;
 
     for (let index = 0; index < argv.length; index++) {
         const arg = argv[index];
@@ -151,6 +152,9 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
             case '--verbose':
                 verbose = true;
                 break;
+            case '--regenerate-script':
+                regenerateScript = true;
+                break;
             default:
                 throw new Error(`Unknown argument: ${arg}`);
         }
@@ -182,6 +186,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
         requestTimeoutSecs,
         verbose,
         artifactRootDir,
+        regenerateScript,
     };
 };
 

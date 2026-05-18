@@ -37,6 +37,7 @@ Options:
   --wait-after-navigation-ms <ms>
                              Extra wait after navigation (default: 5000)
   --request-timeout-secs <s> Navigation timeout (default: 240)
+  --regenerate-script        Skip the saved self-healing extraction script for this run
   --verbose                  Print debug logs to stderr
   -h, --help                 Show help
   --version                  Show version
@@ -74,6 +75,8 @@ Environment:
   SCRAPE_SCREEN_VIDEO
   SCRAPE_CONCURRENCY
   SCRAPE_ARTIFACT_ROOT_DIR
+  SCRAPE_LLM_API_KEY
+  SCRAPE_LLM_MODEL
 
 Project structure:
   src/common/   shared runtime helpers

@@ -15,6 +15,7 @@ export interface RunScrapeOptions {
     requestTimeoutSecs: number;
     screenVideo?: boolean;
     download?: boolean;
+    regenerateScript?: boolean;
 }
 
 export interface ProfileLoginOptions {
@@ -73,6 +74,16 @@ export interface LocalFileArtifact {
     localPath: string;
 }
 
+export type SelfHealingAction = 'generate' | 'repair';
+export type SelfHealingStatus = 'saved' | 'failed';
+
+export interface SelfHealingArtifact {
+    action: SelfHealingAction;
+    status: SelfHealingStatus;
+    screenshot?: LocalFileArtifact;
+    html?: LocalFileArtifact;
+}
+
 export interface BlockedPageArtifact {
     finalUrl: string;
     screenshot?: LocalFileArtifact;
@@ -92,6 +103,7 @@ export interface EngagementScrapeResult extends BaseScrapeResult {
     reactions: ReactionUser[];
     comments: ScrapedComment[];
     sourceVideo?: LocalFileArtifact;
+    selfHealing?: SelfHealingArtifact[];
 }
 
 export interface ProfileCounts {
