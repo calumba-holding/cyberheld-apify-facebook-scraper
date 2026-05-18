@@ -1,5 +1,5 @@
 import { log } from '../../../common/logger.js';
-import type { BrowserSessionMode } from '../../../common/types.js';
+import type { BrowserSessionMode, SelfHealingArtifact } from '../../../common/types.js';
 import { switchToAllComments } from '../../comment-filter.js';
 import { extractAllComments } from '../../comments.js';
 import { extractPostContent } from '../../post-extraction.js';
@@ -8,6 +8,10 @@ import { resolvePostScope } from '../../shared/post-scope.js';
 import { startFacebookSourceVideoDownload } from '../../shared/source-video.js';
 import { isEquivalentFacebookTargetUrl, isFacebookVideoUrl } from '../../shared/url.js';
 import { buildCommentKey, type FacebookScrapeResult } from '../../types.js';
+import {
+    tryGenerateAndSavePostEngagementScript,
+    trySavedPostEngagementScript,
+} from './self-healing-fast-path.js';
 import { tryExtractPublicPostEngagementFromApiPayload } from './public-post-api.js';
 import { extractVisiblePublicCommentsFromRelayStore } from './public-post-relay-comments.js';
 import { tryExtractPublicVideoPostEngagement } from './public-video-api.js';
@@ -21,6 +25,7 @@ interface PostEngagementScrapeOptions {
     outputFile?: string;
     profileDir: string;
     publicPostApiPayload?: string;
+    regenerateScript: boolean;
     runId: string;
 }
 
@@ -38,6 +43,13 @@ const mergeScrapedComments = (...collections: FacebookScrapeResult['comments'][]
     return merged;
 };
 
+const withSelfHealingArtifacts = (
+    result: FacebookScrapeResult,
+    artifacts: SelfHealingArtifact[],
+): FacebookScrapeResult => (
+    artifacts.length > 0 ? { ...result, selfHealing: artifacts } : result
+);
+
 export const POST_ENGAGEMENT_SCRAPER = 'post-engagement';
 
 export const scrapePostEngagement = async (
@@ -53,6 +65,7 @@ export const scrapePostEngagement = async (
     const sourceVideoDownload = options.download
         ? await startFacebookSourceVideoDownload(finalUrl, options.profileDir, options.browserSessionMode, options)
         : null;
+    const selfHealingArtifacts: SelfHealingArtifact[] = [];
 
     try {
         if (options.publicPostApiPayload) {
@@ -61,7 +74,13 @@ export const scrapePostEngagement = async (
             if (apiResult) {
                 log.info(`Using public Facebook API payload result with ${apiResult.comments.length} comments.`);
                 const sourceVideo = sourceVideoDownload ? await sourceVideoDownload.promise : undefined;
-                return sourceVideo ? { ...apiResult, sourceVideo } : apiResult;
+                await tryGenerateAndSavePostEngagementScript(
+                    page,
+                    POST_ENGAGEMENT_SCRAPER,
+                    options,
+                    selfHealingArtifacts,
+                );
+                return withSelfHealingArtifacts(sourceVideo ? { ...apiResult, sourceVideo } : apiResult, selfHealingArtifacts);
             }
         }
 
@@ -71,10 +90,32 @@ export const scrapePostEngagement = async (
             if (apiResult) {
                 log.info(`Using public Facebook video API result with ${apiResult.comments.length} comments.`);
                 const sourceVideo = sourceVideoDownload ? await sourceVideoDownload.promise : undefined;
-                return sourceVideo ? { ...apiResult, sourceVideo } : apiResult;
+                await tryGenerateAndSavePostEngagementScript(
+                    page,
+                    POST_ENGAGEMENT_SCRAPER,
+                    options,
+                    selfHealingArtifacts,
+                );
+                return withSelfHealingArtifacts(sourceVideo ? { ...apiResult, sourceVideo } : apiResult, selfHealingArtifacts);
             }
         }
 
+        // Path A: run saved script if available and not forcing regeneration
+        if (!options.regenerateScript) {
+            const sourceVideo = sourceVideoDownload ? await sourceVideoDownload.promise : undefined;
+            const savedResult = await trySavedPostEngagementScript(
+                page,
+                POST_ENGAGEMENT_SCRAPER,
+                inputUrl,
+                finalUrl,
+                sourceVideo,
+                options,
+                selfHealingArtifacts,
+            );
+            if (savedResult) return savedResult;
+        }
+
+        // Path B: standard DOM extraction
         const scope = await resolvePostScope(page, finalUrl);
         const postContent = await extractPostContent(scope);
 
@@ -103,7 +144,14 @@ export const scrapePostEngagement = async (
         const reactionResult = await extractAllReactions(page, reactionScope);
         const sourceVideo = sourceVideoDownload ? await sourceVideoDownload.promise : undefined;
 
-        return {
+        await tryGenerateAndSavePostEngagementScript(
+            page,
+            POST_ENGAGEMENT_SCRAPER,
+            options,
+            selfHealingArtifacts,
+        );
+
+        return withSelfHealingArtifacts({
             kind: 'engagement',
             inputUrl,
             finalUrl,
@@ -117,7 +165,7 @@ export const scrapePostEngagement = async (
             reactions: reactionResult.users,
             comments,
             sourceVideo,
-        };
+        }, selfHealingArtifacts);
     } catch (error) {
         await sourceVideoDownload?.cancel();
         throw error;

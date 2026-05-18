@@ -143,12 +143,14 @@ const runScrape = async (
                 outputFile: options.outputFile,
                 profileDir: getProfileDir(options.profileRootDir, options.browserSessionMode),
                 publicPostApiPayload,
+                regenerateScript: options.regenerateScript ?? false,
                 runId: options.runId,
             });
         } else if (scraper === COMMENT_REACTIONS_SCRAPER) {
             scrapeResult = await scrapeCommentReactions(page, targetUrl, finalUrl, options.waitAfterNavigationMs, {
                 browserSessionMode: options.browserSessionMode,
                 publicGraphqlTemplate,
+                regenerateScript: options.regenerateScript ?? false,
             });
         } else {
             throw new Error(`Unsupported Facebook scraper: ${scraper}`);
