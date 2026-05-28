@@ -43,12 +43,28 @@ src/
 
 ## Docker — five isolated Facebook profiles
 
-For five logged-in accounts in parallel (persistent cookies per worker, noVNC login, batch scrape of five post URLs), see [docs/docker-infrastructure.md](docs/docker-infrastructure.md).
+### Always-on comment watch (recommended for Pascal)
+
+**Full guide:** [docs/WATCH-FARM-SETUP.md](docs/WATCH-FARM-SETUP.md) — five workers, five accounts, five post URLs, JSON events for new comments.
 
 ```bash
 docker compose build
-docker compose run --rm --service-ports fb-worker-1 login   # http://localhost:6081/vnc.html
-cp docker/urls.example.txt docker/urls.txt                  # add five post URLs
+./scripts/docker/setup-all-worker-configs.sh   # create farm/config/worker-1..5.json
+# Edit each worker-N.json with one post URL per worker
+./scripts/docker/observe-login.sh 1            # repeat for workers 2–5 (ports 6082–6085)
+./scripts/docker/watch-all-dev.sh              # run all five watchers in parallel
+```
+
+Artifacts: `docker/artifacts/worker-N/watch/fb-worker-N/events/`
+
+### One-off batch scrape (five URLs, no watch loop)
+
+See [docs/docker-infrastructure.md](docs/docker-infrastructure.md).
+
+```bash
+docker compose build
+docker compose run --rm --service-ports fb-worker-1 login
+cp docker/urls.example.txt docker/urls.txt
 ./scripts/docker/batch-scrape.sh
 ```
 

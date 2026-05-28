@@ -2,6 +2,8 @@
 
 One JSON file per Docker worker. Copy the example and edit post URLs before `watch`.
 
+**Full setup guide (5 workers, 5 URLs, login, always-on watch):** [../docs/WATCH-FARM-SETUP.md](../docs/WATCH-FARM-SETUP.md)
+
 ```bash
 cp farm/config/worker.example.json farm/config/worker-1.json
 # set workerId to fb-worker-1, accountRef, postUrl(s)
