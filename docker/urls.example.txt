@@ -1,0 +1,8 @@
+# One Facebook post URL per line (max 5). Copy to docker/urls.txt
+# Use a different logged-in account per worker (worker-1 … worker-5).
+
+https://www.facebook.com/share/p/REPLACE_POST_1/
+https://www.facebook.com/share/p/REPLACE_POST_2/
+https://www.facebook.com/share/p/REPLACE_POST_3/
+https://www.facebook.com/share/p/REPLACE_POST_4/
+https://www.facebook.com/share/p/REPLACE_POST_5/

@@ -37,9 +37,20 @@ src/
 
 ## Requirements
 
-- macOS
-- Google Chrome installed at `/Applications/Google Chrome.app`
+- macOS (local CLI) or Docker (multi-profile workers)
+- Google Chrome installed at `/Applications/Google Chrome.app` (local CLI)
 - Node.js `>= 20`
+
+## Docker — five isolated Facebook profiles
+
+For five logged-in accounts in parallel (persistent cookies per worker, noVNC login, batch scrape of five post URLs), see [docs/docker-infrastructure.md](docs/docker-infrastructure.md).
+
+```bash
+docker compose build
+docker compose run --rm --service-ports fb-worker-1 login   # http://localhost:6081/vnc.html
+cp docker/urls.example.txt docker/urls.txt                  # add five post URLs
+./scripts/docker/batch-scrape.sh
+```
 
 ## Install
 

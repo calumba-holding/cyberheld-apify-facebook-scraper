@@ -1,0 +1,85 @@
+# Five isolated Facebook workers — one Chrome profile volume each, one noVNC port each.
+# Apple Silicon: Chrome .deb is amd64; keep platform line or builds will fail on arm64 hosts.
+x-common: &worker-common
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  platform: linux/amd64
+  environment: &worker-env
+    SCRAPE_PROFILE_ROOT_DIR: /data/profiles
+    SCRAPE_CHROME_EXECUTABLE: /usr/bin/google-chrome-stable
+    SCRAPE_ARTIFACT_ROOT_DIR: /data/artifacts
+    SCRAPE_WAIT_AFTER_NAVIGATION_MS: "4000"
+    WORKER_STAGGER_MAX_MS: "25000"
+    WATCH_CONFIG: /data/watch-config/worker.json
+
+services:
+  fb-worker-1:
+    <<: *worker-common
+    ports:
+      - "6081:6080"
+      - "5901:5900"
+    environment:
+      <<: *worker-env
+      NOVNC_PORT: "6080"
+      NOVNC_PUBLIC_URL: "http://localhost:6081/vnc.html?autoconnect=1&resize=scale&reconnect=1"
+    volumes:
+      - ./docker/profiles/worker-1:/data/profiles
+      - ./docker/artifacts/worker-1:/data/artifacts
+      - ./farm/config/worker-1.json:/data/watch-config/worker.json:ro
+
+  fb-worker-2:
+    <<: *worker-common
+    ports:
+      - "6082:6080"
+      - "5902:5900"
+    environment:
+      <<: *worker-env
+      NOVNC_PORT: "6080"
+      NOVNC_PUBLIC_URL: "http://localhost:6082/vnc.html"
+    volumes:
+      - ./docker/profiles/worker-2:/data/profiles
+      - ./docker/artifacts/worker-2:/data/artifacts
+      - ./farm/config/worker-2.json:/data/watch-config/worker.json:ro
+
+  fb-worker-3:
+    <<: *worker-common
+    ports:
+      - "6083:6080"
+      - "5903:5900"
+    environment:
+      <<: *worker-env
+      NOVNC_PORT: "6080"
+      NOVNC_PUBLIC_URL: "http://localhost:6083/vnc.html"
+    volumes:
+      - ./docker/profiles/worker-3:/data/profiles
+      - ./docker/artifacts/worker-3:/data/artifacts
+      - ./farm/config/worker-3.json:/data/watch-config/worker.json:ro
+
+  fb-worker-4:
+    <<: *worker-common
+    ports:
+      - "6084:6080"
+      - "5904:5900"
+    environment:
+      <<: *worker-env
+      NOVNC_PORT: "6080"
+      NOVNC_PUBLIC_URL: "http://localhost:6084/vnc.html"
+    volumes:
+      - ./docker/profiles/worker-4:/data/profiles
+      - ./docker/artifacts/worker-4:/data/artifacts
+      - ./farm/config/worker-4.json:/data/watch-config/worker.json:ro
+
+  fb-worker-5:
+    <<: *worker-common
+    ports:
+      - "6085:6080"
+      - "5905:5900"
+    environment:
+      <<: *worker-env
+      NOVNC_PORT: "6080"
+      NOVNC_PUBLIC_URL: "http://localhost:6085/vnc.html"
+    volumes:
+      - ./docker/profiles/worker-5:/data/profiles
+      - ./docker/artifacts/worker-5:/data/artifacts
+      - ./farm/config/worker-5.json:/data/watch-config/worker.json:ro

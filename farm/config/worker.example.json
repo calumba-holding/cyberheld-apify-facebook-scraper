@@ -1,0 +1,19 @@
+{
+  "workerId": "fb-worker-1",
+  "accountRef": "cm-001",
+  "pollIntervalSeconds": 90,
+  "commentsOnly": true,
+  "incident": {
+    "gapSeconds": 120,
+    "maxEvents": 50,
+    "maxDurationSeconds": 600
+  },
+  "posts": [
+    {
+      "postUrl": "https://www.facebook.com/strache/posts/pfbid0NGPWDuSbwYZfQ8VRedL4mFo4qPZE1qaN3RvoUTFbcf7Tkz17YjMBWC3xrm3xah6Sl"
+    },
+    {
+      "postUrl": "https://www.facebook.com/ANOTHER_PAGE/posts/pfbidSECOND_POST_ID_HERE"
+    }
+  ]
+}
