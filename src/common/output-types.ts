@@ -41,6 +41,8 @@ export type ScrapeItemOutput = {
     profile?: ProfileData;
     artifacts?: {
         screenshots?: ScreenshotArtifact[];
+        engagementJson?: LocalFileArtifact;
+        sessionVideo?: LocalFileArtifact;
         sourceVideo?: LocalFileArtifact;
         selfHealing?: SelfHealingArtifact[];
         blockedPage?: {

@@ -17,6 +17,8 @@ export interface RunCliOptions {
     verbose: boolean;
     artifactRootDir: string;
     regenerateScript: boolean;
+    fullPageScreenshot: boolean;
+    expandComments: boolean;
 }
 
 export interface ProfileLoginCliOptions {
@@ -33,10 +35,21 @@ export interface ProfilePathCliOptions {
     profileRootDir: string;
 }
 
+export interface WatchCliOptions {
+    command: 'watch';
+    configPath: string;
+    profileRootDir: string;
+    artifactRootDir: string;
+    chromeExecutable: string;
+    once: boolean;
+    verbose: boolean;
+}
+
 export type ParsedCli =
     | { kind: 'help'; text: string }
     | { kind: 'version' }
     | { kind: 'run'; options: RunCliOptions }
+    | { kind: 'watch'; options: WatchCliOptions }
     | { kind: 'profile-login'; options: ProfileLoginCliOptions }
     | { kind: 'profile-path'; options: ProfilePathCliOptions };
 

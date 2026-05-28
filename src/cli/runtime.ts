@@ -9,6 +9,7 @@ import { buildFailedOutput, buildRunOutput, buildSuccessOutput, type ScrapeItemO
 import { getTargetPlugin } from '../registry.js';
 import type { TargetPlugin } from '../common/types.js';
 import { helpText } from './parse.js';
+import { runWatchService } from '../watch/service.js';
 import type { ParsedCli, ProfileStatusOutput, RunCliOptions } from './types.js';
 import { resolveRunOutputFile } from './output-paths.js';
 import { finalizeVideoArtifact, prepareRawVideoDir } from './video-artifacts.js';
@@ -81,12 +82,23 @@ const runScrapeCommand = async (options: RunCliOptions): Promise<ScrapeRunOutput
         await context.close().catch(() => undefined);
     }
 
-    videoArtifact = await finalizeVideoArtifact(
-        options,
-        runId,
-        recordVideoDir,
-        results.some((result) => result.scrape.status !== 'FAILED'),
-    );
+    const sessionVideos = results
+        .map((result) => result.artifacts?.sessionVideo?.localPath)
+        .filter((path): path is string => Boolean(path));
+
+    if (sessionVideos.length > 0) {
+        videoArtifact = { present: true, localPath: sessionVideos[0] };
+        if (sessionVideos.length > 1) {
+            log.info(`Recorded ${String(sessionVideos.length)} session videos (one per parallel tab).`);
+        }
+    } else {
+        videoArtifact = await finalizeVideoArtifact(
+            options,
+            runId,
+            recordVideoDir,
+            results.some((result) => result.scrape.status !== 'FAILED'),
+        );
+    }
 
     return buildRunOutput(
         options.target,
@@ -103,6 +115,20 @@ const runScrapeCommand = async (options: RunCliOptions): Promise<ScrapeRunOutput
     );
 };
 
+const waitForProfileLoginComplete = async (): Promise<void> => {
+    const autoWaitSecs = Number.parseInt(process.env.SCRAPE_LOGIN_AUTO_WAIT_SECS ?? '', 10);
+    if (Number.isFinite(autoWaitSecs) && autoWaitSecs > 0 && !process.stdin.isTTY) {
+        process.stderr.write(`Waiting up to ${String(autoWaitSecs)}s for login (SCRAPE_LOGIN_AUTO_WAIT_SECS, non-interactive)...\n`);
+        await new Promise((resolve) => setTimeout(resolve, autoWaitSecs * 1000));
+        return;
+    }
+
+    process.stderr.write('Log into the target in the browser, then press Enter here when ready.\n');
+    const rl = createInterface({ input, output: process.stderr });
+    await rl.question('Press Enter after login is complete... ');
+    rl.close();
+};
+
 const runProfileLoginCommand = async (target: RunCliOptions['target'], chromeExecutable: string, profileRootDir: string): Promise<ProfileStatusOutput> => {
     const plugin = getTargetPlugin(target);
     const context = await plugin.openProfileLoginBrowser({ chromeExecutable, profileRootDir });
@@ -110,10 +136,7 @@ const runProfileLoginCommand = async (target: RunCliOptions['target'], chromeExe
 
     try {
         process.stderr.write(`Opened persistent profile at ${profileDir}\n`);
-        process.stderr.write(`Log into ${target}, then press Enter here when ready.\n`);
-        const rl = createInterface({ input, output: process.stderr });
-        await rl.question('Press Enter after login is complete... ');
-        rl.close();
+        await waitForProfileLoginComplete();
         return { target, profileDir, status: 'ready' };
     } finally {
         await context.close().catch(() => undefined);
@@ -145,6 +168,18 @@ export const runCli = async (parsed: ParsedCli): Promise<void> => {
     if (parsed.kind === 'profile-login') {
         setVerboseLogging(parsed.options.verbose);
         await emitJson(await runProfileLoginCommand(parsed.options.target, parsed.options.chromeExecutable, parsed.options.profileRootDir));
+        return;
+    }
+
+    if (parsed.kind === 'watch') {
+        setVerboseLogging(parsed.options.verbose);
+        await runWatchService({
+            configPath: parsed.options.configPath,
+            profileRootDir: parsed.options.profileRootDir,
+            artifactRootDir: parsed.options.artifactRootDir,
+            chromeExecutable: parsed.options.chromeExecutable,
+            once: parsed.options.once,
+        });
         return;
     }
 

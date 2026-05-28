@@ -1,7 +1,9 @@
+import { readFileSync } from 'node:fs';
+
 import { defaultArtifactRootDir, defaultChromeExecutable, defaultProfileRootDir, helpText } from './help.js';
 import { getTargetPlugin, isSupportedTarget, SUPPORTED_TARGETS } from '../registry.js';
 import type { BrowserSessionMode, SupportedTarget } from '../common/types.js';
-import type { ParsedCli, ProfileLoginCliOptions, ProfilePathCliOptions, RunCliOptions } from './types.js';
+import type { ParsedCli, ProfileLoginCliOptions, ProfilePathCliOptions, RunCliOptions, WatchCliOptions } from './types.js';
 
 const parseBooleanEnv = (value: string | undefined, fallback: boolean): boolean => {
     if (!value) return fallback;
@@ -29,6 +31,14 @@ const ensureUrl = (value: string): string => {
     if (!URL.canParse(value)) throw new Error('--target-url must be a valid URL.');
     return new URL(value).toString();
 };
+
+const loadUrlsFromFile = (filePath: string): string[] => (
+    readFileSync(filePath, 'utf8')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && !line.startsWith('#'))
+        .map(ensureUrl)
+);
 
 const parseTargetFlag = (args: string[], index: number): SupportedTarget => {
     const value = takeValue(args, index, '--target');
@@ -94,6 +104,8 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     const artifactRootDir = process.env.SCRAPE_ARTIFACT_ROOT_DIR ?? defaultArtifactRootDir;
     let verbose = false;
     let regenerateScript = false;
+    let fullPageScreenshot = false;
+    let expandComments = true;
 
     for (let index = 0; index < argv.length; index++) {
         const arg = argv[index];
@@ -108,6 +120,10 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
                 break;
             case '--target-url':
                 targetUrls.push(ensureUrl(takeValue(argv, index, '--target-url')));
+                index += 1;
+                break;
+            case '--urls-file':
+                targetUrls.push(...loadUrlsFromFile(takeValue(argv, index, '--urls-file')));
                 index += 1;
                 break;
             case '--concurrency':
@@ -125,6 +141,12 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
                 break;
             case '--no-screen-video':
                 screenVideo = false;
+                break;
+            case '--full-page-screenshot':
+                fullPageScreenshot = true;
+                break;
+            case '--no-expand-comments':
+                expandComments = false;
                 break;
             case '--no-download':
                 download = false;
@@ -162,14 +184,15 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
 
     if (!target) throw new Error('Missing required flag: --target');
     if (!scraper) throw new Error('Missing required flag: --scraper');
-    if (targetUrls.length === 0) throw new Error('Missing required flag: --target-url');
+    if (targetUrls.length === 0) {
+        throw new Error('Missing target URLs. Provide --target-url <url> and/or --urls-file <path>.');
+    }
     if (!getTargetPlugin(target).scrapers.includes(scraper)) {
         throw new Error(`Unsupported scraper for ${target}: ${scraper}`);
     }
     if (browserSessionMode !== 'persistent-profile' && target !== 'facebook') {
         throw new Error('--public-session and --guest-session are currently supported only for --target facebook.');
     }
-
     return {
         command: 'run',
         target,
@@ -187,12 +210,66 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
         verbose,
         artifactRootDir,
         regenerateScript,
+        fullPageScreenshot,
+        expandComments,
     };
 };
 
-const normalizeArgv = (argv: string[]): string[] => (
-    argv[0] === 'scrape' ? argv.slice(1) : argv
-);
+const parseWatchArgs = (argv: string[]): WatchCliOptions => {
+    let configPath: string | undefined;
+    let profileRootDir = process.env.SCRAPE_PROFILE_ROOT_DIR ?? defaultProfileRootDir;
+    let artifactRootDir = process.env.SCRAPE_ARTIFACT_ROOT_DIR ?? defaultArtifactRootDir;
+    let chromeExecutable = process.env.SCRAPE_CHROME_EXECUTABLE ?? defaultChromeExecutable;
+    let once = false;
+    let verbose = false;
+
+    for (let index = 1; index < argv.length; index++) {
+        const arg = argv[index];
+        switch (arg) {
+            case '--config':
+                configPath = takeValue(argv, index, '--config');
+                index += 1;
+                break;
+            case '--chrome-executable':
+                chromeExecutable = takeValue(argv, index, '--chrome-executable');
+                index += 1;
+                break;
+            case '--profile-root-dir':
+                profileRootDir = takeValue(argv, index, '--profile-root-dir');
+                index += 1;
+                break;
+            case '--artifact-root-dir':
+                artifactRootDir = takeValue(argv, index, '--artifact-root-dir');
+                index += 1;
+                break;
+            case '--once':
+                once = true;
+                break;
+            case '--verbose':
+                verbose = true;
+                break;
+            default:
+                throw new Error(`Unknown argument: ${arg}`);
+        }
+    }
+
+    if (!configPath) throw new Error('Missing required flag: --config');
+    return {
+        command: 'watch',
+        configPath,
+        profileRootDir,
+        artifactRootDir,
+        chromeExecutable,
+        once,
+        verbose,
+    };
+};
+
+/** Drop npm/pnpm passthrough `--` and optional leading `scrape` subcommand name. */
+const normalizeArgv = (argv: string[]): string[] => {
+    const withoutScrape = argv[0] === 'scrape' ? argv.slice(1) : argv;
+    return withoutScrape.filter((arg) => arg !== '--');
+};
 
 export const parseCliArgs = (argv: string[]): ParsedCli => {
     const normalizedArgv = normalizeArgv(argv);
@@ -201,6 +278,9 @@ export const parseCliArgs = (argv: string[]): ParsedCli => {
         return { kind: 'help', text: helpText };
     }
     if (normalizedArgv.includes('--version')) return { kind: 'version' };
+    if (normalizedArgv[0] === 'watch') {
+        return { kind: 'watch', options: parseWatchArgs(normalizedArgv) };
+    }
     if (normalizedArgv[0] === 'profile') {
         const options = parseProfileArgs(normalizedArgv);
         return options.command === 'profile-login'
