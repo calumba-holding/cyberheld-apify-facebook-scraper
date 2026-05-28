@@ -84,7 +84,7 @@ export const findTargetPostRoot = async (page: Page, targetUrl: string): Promise
         const dialogCandidates = Array.from(document.querySelectorAll<HTMLElement>(dialogSelector))
             .filter((node) => isVisible(node))
             .map(scoreNode)
-            .filter((candidate) => candidate.permalinkMatches > 0 && candidate.reactionCount > 0 && (
+            .filter((candidate) => candidate.permalinkMatches > 0 && (
                 isWatchVideoTarget
                     ? (candidate.commentCount > 0 || candidate.headingCount > 0 || candidate.videoCount > 0)
                     : candidate.messageCount > 0
@@ -104,7 +104,7 @@ export const findTargetPostRoot = async (page: Page, targetUrl: string): Promise
         const divCandidates = Array.from(document.querySelectorAll<HTMLElement>('div'))
             .filter((node) => isVisible(node))
             .map(scoreNode)
-            .filter((candidate) => candidate.permalinkMatches > 0 && candidate.reactionCount > 0 && (
+            .filter((candidate) => candidate.permalinkMatches > 0 && (
                 isWatchVideoTarget
                     ? (candidate.commentCount > 0 || candidate.headingCount > 0 || candidate.videoCount > 0)
                     : (candidate.messageCount > 0 && candidate.commentCount > 0)
