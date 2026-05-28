@@ -21,16 +21,16 @@ describe('registry', () => {
 
     it('returns the facebook plugin when the target is facebook', () => {
         expect(getTargetPlugin('facebook').target).toBe('facebook');
-        expect(getTargetPlugin('facebook').scrapers).toEqual(['post-engagement', 'comment-reactions']);
+        expect(getTargetPlugin('facebook').scrapers).toEqual(['post-engagement', 'post-screenshot', 'comment-reactions']);
     });
 
     it('returns the instagram plugin when the target is instagram', () => {
         expect(getTargetPlugin('instagram').target).toBe('instagram');
-        expect(getTargetPlugin('instagram').scrapers).toEqual(['post-engagement', 'profile-scraper']);
+        expect(getTargetPlugin('instagram').scrapers).toEqual(['post-engagement', 'post-screenshot', 'profile-scraper']);
     });
 
     it('declares supported scrapers on each target plugin', () => {
-        expect(getTargetPlugin('facebook').scrapers).toEqual(['post-engagement', 'comment-reactions']);
-        expect(getTargetPlugin('instagram').scrapers).toEqual(['post-engagement', 'profile-scraper']);
+        expect(getTargetPlugin('facebook').scrapers).toEqual(['post-engagement', 'post-screenshot', 'comment-reactions']);
+        expect(getTargetPlugin('instagram').scrapers).toEqual(['post-engagement', 'post-screenshot', 'profile-scraper']);
     });
 });

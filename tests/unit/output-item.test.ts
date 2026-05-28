@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { buildFailedOutput, buildRunOutput, buildSuccessOutput } from '../../src/common/output-item.js';
 import type { FacebookScrapeResult } from '../../src/facebook/types.js';
-import type { ProfileScrapeResult } from '../../src/common/types.js';
+import type { ProfileScrapeResult, ScreenshotScrapeResult } from '../../src/common/types.js';
 
 const buildResult = (overrides: Partial<FacebookScrapeResult> = {}): FacebookScrapeResult => ({
     kind: 'engagement',
@@ -149,6 +149,57 @@ describe('buildSuccessOutput for profile scrapes', () => {
         expect(output.completeness).toBeUndefined();
         expect(output.post).toBeUndefined();
         expect(output.comments).toBeUndefined();
+    });
+});
+
+describe('buildSuccessOutput for screenshot scrapes', () => {
+    it('returns post url, caption preview, and screenshot artifacts', () => {
+        const output = buildSuccessOutput({
+            kind: 'screenshot',
+            inputUrl: 'https://www.instagram.com/reel/ABC/',
+            finalUrl: 'https://www.instagram.com/reel/ABC/',
+            scrapedAt: '2026-03-22T10:00:00.000Z',
+            screenshots: [{ localPath: '/tmp/run-post-01.png' }],
+            captionPreview: 'Caption text',
+        } satisfies ScreenshotScrapeResult, 'job-screenshot');
+
+        expect(output.scrape.status).toBe('SUCCEEDED');
+        expect(output.post).toMatchObject({
+            url: 'https://www.instagram.com/reel/ABC/',
+            content: 'Caption text',
+        });
+        expect(output.artifacts?.screenshots).toEqual([{ localPath: '/tmp/run-post-01.png' }]);
+        expect(output.completeness).toBeUndefined();
+    });
+
+    it('returns structured engagement, comments, and engagement json artifact', () => {
+        const output = buildSuccessOutput({
+            kind: 'screenshot',
+            inputUrl: 'https://www.instagram.com/reel/ABC/',
+            finalUrl: 'https://www.instagram.com/p/ABC/',
+            scrapedAt: '2026-03-22T10:00:00.000Z',
+            screenshots: [{ localPath: '/tmp/run-post-01.png' }],
+            captionPreview: 'Caption text',
+            reactionCount: 2749,
+            commentCount: 481,
+            reactions: [{ name: 'Ada', profile_url: 'https://www.instagram.com/ada/', reaction: 'Like' }],
+            comments: [{
+                user: 'Bob',
+                content: 'Nice',
+                timestamp: '2026-03-22T10:00:00.000Z',
+                id: '1',
+            }],
+            commentsComplete: true,
+            postReactionsComplete: true,
+            engagementJsonPath: '/tmp/run_engagement-01.json',
+            sessionVideo: { localPath: '/tmp/run_session-01.webm' },
+        } satisfies ScreenshotScrapeResult, 'job-screenshot');
+
+        expect(output.scrape.status).toBe('SUCCEEDED');
+        expect(output.post?.reactionSummary.total).toBe(2749);
+        expect(output.comments).toHaveLength(1);
+        expect(output.artifacts?.engagementJson).toEqual({ localPath: '/tmp/run_engagement-01.json' });
+        expect(output.artifacts?.sessionVideo).toEqual({ localPath: '/tmp/run_session-01.webm' });
     });
 });
 

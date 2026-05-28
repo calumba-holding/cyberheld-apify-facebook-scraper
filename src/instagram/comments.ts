@@ -1,8 +1,8 @@
-import type { Page } from 'playwright';
+import type { Locator, Page } from 'playwright';
 
 import { log } from '../common/logger.js';
 import type { ScrapedComment } from '../common/types.js';
-import { COMMENT_PERMALINK_SELECTOR, LOAD_MORE_COMMENTS_LABEL, VIEW_REPLIES_PATTERN } from './selectors.js';
+import { DIALOG_SELECTOR, LOAD_MORE_COMMENTS_LABEL } from './selectors.js';
 
 export type InstagramCommentExtractionResult = {
     comments: ScrapedComment[];
@@ -15,42 +15,161 @@ type InstagramCommentExtractionOptions = {
     settleMs?: number;
 };
 
-const clickVisibleElements = async (
-    page: Page,
-    selector: string,
-    clickDelayMs: number,
-    textPattern?: RegExp,
-): Promise<boolean> => {
-    const locator = textPattern
-        ? page.locator(selector).filter({ hasText: textPattern })
-        : page.locator(selector);
-    let clicked = false;
+const VIEW_REPLIES_EVAL_PATTERNS = [
+    /^View all \d+ repl(?:y|ies)$/i,
+    /^View repl(?:y|ies) \(\d+\)$/i,
+    /^View \d+ repl(?:y|ies)$/i,
+    /^Alle \d+ Antworten anzeigen$/i,
+    /^Antworten anzeigen \(\d+\)$/i,
+    /^\d+ Antworten anzeigen$/i,
+];
 
-    for (let index = 0; index < await locator.count(); index++) {
-        const element = locator.nth(index);
-        if (!(await element.isVisible().catch(() => false))) continue;
-        await element.scrollIntoViewIfNeeded().catch(() => undefined);
-        await element.evaluate((node) => (node as HTMLElement).click()).catch(() => undefined);
+const isViewRepliesText = (text: string): boolean => VIEW_REPLIES_EVAL_PATTERNS.some((p) => p.test(text));
+
+const resolveCommentPanel = async (page: Page): Promise<Locator> => {
+    const dialog = page.locator(DIALOG_SELECTOR).first();
+    if (await dialog.isVisible().catch(() => false)) return dialog;
+    return page.locator('main').first();
+};
+
+const scrollCommentPanel = async (page: Page, direction: 'up' | 'down'): Promise<void> => {
+    await page.evaluate(({ dir }) => {
+        const list = document.querySelector('ul._a9ym, ul._a9z6');
+        if (!list) return;
+
+        let scrollable: HTMLElement | null = list as HTMLElement;
+        while (scrollable) {
+            if (scrollable.scrollHeight > scrollable.clientHeight + 8) break;
+            scrollable = scrollable.parentElement;
+        }
+        if (!scrollable) return;
+
+        const delta = Math.max(280, Math.floor(scrollable.clientHeight * 0.9));
+        scrollable.scrollTop += dir === 'down' ? delta : -delta;
+    }, { dir: direction });
+};
+
+const loadAllTopLevelComments = async (page: Page, clickDelayMs: number, maxClicks: number): Promise<number> => {
+    let clicks = 0;
+
+    for (let attempt = 0; attempt < maxClicks; attempt++) {
+        const loadMore = page.getByRole('button', { name: new RegExp(`^${LOAD_MORE_COMMENTS_LABEL}$`, 'i') }).first();
+        if (!(await loadMore.isVisible().catch(() => false))) break;
+
+        await loadMore.scrollIntoViewIfNeeded().catch(() => undefined);
+        await loadMore.click({ timeout: 5000 }).catch(() => undefined);
+        clicks += 1;
         await page.waitForTimeout(clickDelayMs);
-        clicked = true;
     }
 
-    return clicked;
+    if (clicks > 0) {
+        log.info(`Clicked "Load more comments" ${String(clicks)} time(s).`);
+    }
+
+    return clicks;
 };
 
-const countVisibleActionButtons = async (page: Page): Promise<{ loadMore: number; replies: number }> => {
-    const loadMore = await page.locator('button')
-        .filter({ hasText: new RegExp(`^${LOAD_MORE_COMMENTS_LABEL}$`, 'i') })
-        .evaluateAll((nodes) => nodes.filter((node) => node instanceof HTMLElement && node.offsetParent !== null).length)
-        .catch(() => 0);
+/** Click one visible "View replies" control at a time (DOM mutates after each click). */
+const clickNextViewRepliesButton = async (page: Page): Promise<boolean> => (
+    page.evaluate((patterns) => {
+        const isViewReplies = (text: string): boolean => {
+            const normalized = text.replace(/\s+/g, ' ').trim();
+            return patterns.some((source) => new RegExp(source, 'i').test(normalized));
+        };
 
-    const replies = await page.locator('[role="button"]')
-        .filter({ hasText: VIEW_REPLIES_PATTERN })
-        .evaluateAll((nodes) => nodes.filter((node) => node instanceof HTMLElement && node.offsetParent !== null).length)
-        .catch(() => 0);
+        const roots = Array.from(document.querySelectorAll('ul._a9ym, ul._a9z6, [role="dialog"]'));
+        for (const root of roots) {
+            const buttons = Array.from(root.querySelectorAll<HTMLElement>('button, [role="button"]'));
+            for (const button of buttons) {
+                if (!button.offsetParent) continue;
+                const text = (button.textContent || '').replace(/\s+/g, ' ').trim();
+                if (!isViewReplies(text)) continue;
+                if (/^Hide /i.test(text) || /^Ausblenden/i.test(text)) continue;
+                button.scrollIntoView({ block: 'center', inline: 'nearest' });
+                button.click();
+                return true;
+            }
+        }
+        return false;
+    }, VIEW_REPLIES_EVAL_PATTERNS.map((p) => p.source))
+);
 
-    return { loadMore, replies };
+const expandAllReplyThreads = async (page: Page, clickDelayMs: number): Promise<number> => {
+    let expanded = 0;
+    let idleRounds = 0;
+
+    for (let sweep = 0; sweep < 4; sweep++) {
+        await scrollCommentPanel(page, 'up');
+        await page.waitForTimeout(200);
+
+        for (let step = 0; step < 120; step++) {
+            const clicked = await clickNextViewRepliesButton(page);
+            if (clicked) {
+                expanded += 1;
+                idleRounds = 0;
+                await page.waitForTimeout(clickDelayMs);
+                continue;
+            }
+
+            const beforeScroll = await page.evaluate(() => {
+                const list = document.querySelector('ul._a9ym, ul._a9z6');
+                if (!list) return { top: 0, height: 0, scrollHeight: 0 };
+                let scrollable: HTMLElement | null = list as HTMLElement;
+                while (scrollable) {
+                    if (scrollable.scrollHeight > scrollable.clientHeight + 8) break;
+                    scrollable = scrollable.parentElement;
+                }
+                if (!scrollable) return { top: 0, height: 0, scrollHeight: 0 };
+                return {
+                    top: scrollable.scrollTop,
+                    height: scrollable.clientHeight,
+                    scrollHeight: scrollable.scrollHeight,
+                };
+            });
+
+            await scrollCommentPanel(page, 'down');
+            await page.waitForTimeout(150);
+
+            const afterScroll = await page.evaluate(() => {
+                const list = document.querySelector('ul._a9ym, ul._a9z6');
+                if (!list) return { top: 0 };
+                let scrollable: HTMLElement | null = list as HTMLElement;
+                while (scrollable) {
+                    if (scrollable.scrollHeight > scrollable.clientHeight + 8) break;
+                    scrollable = scrollable.parentElement;
+                }
+                return { top: scrollable?.scrollTop ?? 0 };
+            });
+
+            const atBottom = beforeScroll.top + beforeScroll.height >= beforeScroll.scrollHeight - 6;
+            if (atBottom || afterScroll.top === beforeScroll.top) {
+                idleRounds += 1;
+                if (idleRounds >= 2) break;
+            } else {
+                idleRounds = 0;
+            }
+        }
+    }
+
+    if (expanded > 0) {
+        log.info(`Expanded ${String(expanded)} Instagram reply thread(s).`);
+    } else {
+        log.warning('No "View replies" buttons were clicked — nested replies may be missing.');
+    }
+
+    return expanded;
 };
+
+const countRemainingViewReplies = async (page: Page): Promise<number> => (
+    page.evaluate((patterns) => {
+        const isViewReplies = (text: string): boolean => (
+            patterns.some((source) => new RegExp(source, 'i').test(text.replace(/\s+/g, ' ').trim()))
+        );
+        return Array.from(document.querySelectorAll<HTMLElement>('ul._a9ym button, ul._a9ym [role="button"], ul._a9z6 button'))
+            .filter((button) => button.offsetParent && isViewReplies(button.textContent || ''))
+            .length;
+    }, VIEW_REPLIES_EVAL_PATTERNS.map((p) => p.source))
+);
 
 const deduplicateComments = (comments: ScrapedComment[]): ScrapedComment[] => {
     const seen = new Set<string>();
@@ -63,15 +182,39 @@ const deduplicateComments = (comments: ScrapedComment[]): ScrapedComment[] => {
 };
 
 const extractVisibleComments = async (page: Page): Promise<ScrapedComment[]> => {
-    const extracted = await page.locator('main').evaluate((main, options) => {
+    const panel = await resolveCommentPanel(page);
+    const extracted = await panel.evaluate((container, options) => {
         const clean = (value: string | null | undefined): string => (value || '').replace(/\s+/g, ' ').trim();
         const isProfileHref = (href: string): boolean => /^\/[^/?#]+\/$/.test(href)
             && !href.startsWith('/accounts/')
             && !href.startsWith('/explore/');
-        const repliesPattern = new RegExp(options.viewRepliesPattern, 'i');
+
+        const isCommentPermalink = (href: string): boolean => (
+            /\/(?:p|reel|reels|tv)\/[^/]+\/c\/[^/?#]+/i.test(href)
+        );
+
+        const isViewReplies = (text: string): boolean => (
+            options.viewRepliesPatterns.some((source) => new RegExp(source, 'i').test(clean(text)))
+        );
+
+        const isNoiseText = (text: string): boolean => {
+            if (!text) return true;
+            if (isViewReplies(text)) return true;
+            if (text === options.loadMoreCommentsLabel) return true;
+            if (/^See translation$/i.test(text)) return true;
+            if (/^Comment Options$/i.test(text)) return true;
+            if (/^\d[\d.,]*\s*likes?$/i.test(text)) return true;
+            if (/^(Like|Reply|Follow|Edited|Verified)$/i.test(text)) return true;
+            if (/^\d+\s*[hdwm]\s*·\s*Edited$/i.test(text)) return true;
+            if (/^\d+\s*[hdwm](?:\s+·\s+Edited)?$/i.test(text) && text.length < 12) return true;
+            if (/^\S+\s+\d+\s*[hdwm]\s+@/i.test(text)) return true;
+            if (/\d+\s*likes?\s+Reply/i.test(text)) return true;
+            return false;
+        };
+
         const resolveContainer = (anchor: HTMLAnchorElement): HTMLElement | null => {
             let current = anchor.parentElement;
-            while (current && current !== main) {
+            while (current && current !== container) {
                 const text = clean(current.textContent);
                 if (text.includes('Like') && text.includes('Reply')) return current;
                 current = current.parentElement;
@@ -79,47 +222,100 @@ const extractVisibleComments = async (page: Page): Promise<ScrapedComment[]> => 
             return anchor.parentElement;
         };
 
-        return Array.from(main.querySelectorAll<HTMLAnchorElement>(options.permalinkSelector)).map((anchor) => {
-            const container = resolveContainer(anchor);
-            if (!container) return null;
+        const resolveParentCommentId = (anchor: HTMLAnchorElement): string | undefined => {
+            const replyList = anchor.closest('ul._a9yo, ul._a9yp');
+            if (replyList) {
+                const hostLi = replyList.closest('li');
+                if (hostLi) {
+                    const parentLink = Array.from(hostLi.querySelectorAll<HTMLAnchorElement>('a[href*="/c/"]'))
+                        .find((link) => {
+                            const href = link.getAttribute('href') || '';
+                            return isCommentPermalink(href) && !replyList.contains(link);
+                        });
+                    const parentId = (parentLink?.getAttribute('href') || '').match(/\/c\/([^/?#]+)/)?.[1];
+                    if (parentId) return parentId;
+                }
+            }
 
-            const userAnchor = Array.from(container.querySelectorAll<HTMLAnchorElement>('a[href]'))
-                .find((link) => isProfileHref(link.getAttribute('href') || ''));
-            const timeElement = anchor.querySelector('time');
-            const user = clean(userAnchor?.textContent) || 'Unknown User';
-            const timestampLabel = clean(timeElement?.textContent || anchor.textContent);
-            const timestamp = clean(timeElement?.getAttribute('datetime')) || timestampLabel;
-            const content = Array.from(container.querySelectorAll<HTMLElement>('div, span'))
-                .map((element) => clean(element.innerText || element.textContent))
-                .find((text) => Boolean(text)
-                    && text !== user
-                    && text !== timestampLabel
-                    && !(text.includes(user) && text.includes(timestampLabel))
-                    && text !== 'Like'
-                    && text !== 'Reply'
-                    && text !== 'Follow'
-                    && text !== 'Edited'
-                    && !repliesPattern.test(text)
-                    && text !== options.loadMoreCommentsLabel) || '';
-            const id = (anchor.getAttribute('href') || '').match(/\/c\/([^/?#]+)/)?.[1] || '';
+            const commentLi = anchor.closest('li');
+            if (!commentLi) return undefined;
 
-            return {
-                user,
-                content,
-                timestamp,
-                timestampLabel: timestampLabel || '',
-                id,
-            };
-        }).filter((comment): comment is NonNullable<typeof comment> => Boolean(comment?.id));
+            const ancestorLis = [];
+            let node: Element | null = commentLi.parentElement;
+            while (node && node !== container) {
+                if (node instanceof HTMLLIElement) ancestorLis.push(node);
+                node = node.parentElement;
+            }
+
+            for (const ancestorLi of ancestorLis) {
+                const parentLink = Array.from(ancestorLi.querySelectorAll<HTMLAnchorElement>('a[href*="/c/"]'))
+                    .find((link) => {
+                        const href = link.getAttribute('href') || '';
+                        return isCommentPermalink(href) && link !== anchor && !commentLi.contains(link);
+                    });
+                const parentId = (parentLink?.getAttribute('href') || '').match(/\/c\/([^/?#]+)/)?.[1];
+                if (parentId) return parentId;
+            }
+
+            return undefined;
+        };
+
+        const resolveLikeCount = (containerEl: HTMLElement): string | undefined => {
+            const labels = Array.from(containerEl.querySelectorAll('button, [role="button"]'))
+                .map((element) => clean(element.textContent))
+                .filter(Boolean);
+            const match = labels.find((label) => /^\d[\d.,]*\s*likes?$/i.test(label));
+            return match?.match(/^([\d.,]+[KMB]?)/i)?.[1] || match;
+        };
+
+        return Array.from(container.querySelectorAll<HTMLAnchorElement>('a[href*="/c/"]'))
+            .filter((anchor) => isCommentPermalink(anchor.getAttribute('href') || ''))
+            .map((anchor) => {
+                const containerEl = resolveContainer(anchor);
+                if (!containerEl) return null;
+
+                const userAnchor = Array.from(containerEl.querySelectorAll<HTMLAnchorElement>('a[href]'))
+                    .find((link) => isProfileHref(link.getAttribute('href') || ''));
+                const timeElement = anchor.querySelector('time');
+                const user = clean(userAnchor?.textContent) || 'Unknown User';
+                const timestampLabel = clean(timeElement?.textContent || anchor.textContent);
+                const timestamp = clean(timeElement?.getAttribute('datetime')) || timestampLabel;
+                const content = Array.from(containerEl.querySelectorAll<HTMLElement>('div, span'))
+                    .map((element) => clean(element.innerText || element.textContent))
+                    .find((text) => Boolean(text)
+                        && text !== user
+                        && text !== timestampLabel
+                        && !(text.includes(user) && text.includes(timestampLabel))
+                        && !isNoiseText(text)) || '';
+                const id = (anchor.getAttribute('href') || '').match(/\/c\/([^/?#]+)/)?.[1] || '';
+                const parentId = resolveParentCommentId(anchor);
+                const likeCount = resolveLikeCount(containerEl);
+                const isReply = Boolean(anchor.closest('ul._a9yo, ul._a9yp') || parentId);
+
+                return {
+                    user,
+                    content,
+                    timestamp,
+                    timestampLabel: timestampLabel || '',
+                    id,
+                    parentId,
+                    likeCount,
+                    isReply,
+                };
+            }).filter((comment): comment is NonNullable<typeof comment> => Boolean(comment?.id));
     }, {
-        permalinkSelector: COMMENT_PERMALINK_SELECTOR,
         loadMoreCommentsLabel: LOAD_MORE_COMMENTS_LABEL,
-        viewRepliesPattern: VIEW_REPLIES_PATTERN.source,
+        viewRepliesPatterns: VIEW_REPLIES_EVAL_PATTERNS.map((p) => p.source),
     });
 
     return extracted.map((comment) => ({
-        ...comment,
+        user: comment.user,
+        content: comment.content,
+        timestamp: comment.timestamp,
         timestampLabel: comment.timestampLabel || undefined,
+        id: comment.id,
+        parentId: comment.parentId || undefined,
+        likeCount: comment.likeCount || undefined,
     }));
 };
 
@@ -127,33 +323,31 @@ export const extractInstagramComments = async (
     page: Page,
     options: InstagramCommentExtractionOptions = {},
 ): Promise<InstagramCommentExtractionResult> => {
-    const maxPasses = options.maxPasses ?? 12;
     const clickDelayMs = options.clickDelayMs ?? 500;
-    const settleMs = options.settleMs ?? 1000;
-    let previousCount = 0;
-    let stablePasses = 0;
+    const settleMs = options.settleMs ?? 700;
 
-    for (let pass = 0; pass < maxPasses && stablePasses < 3; pass++) {
-        log.info(`Instagram comment pass ${pass + 1}/${maxPasses}...`);
-        const clickedLoadMore = await clickVisibleElements(page, 'button', clickDelayMs, new RegExp(`^${LOAD_MORE_COMMENTS_LABEL}$`, 'i'));
-        const clickedReplies = await clickVisibleElements(page, '[role="button"]', clickDelayMs, VIEW_REPLIES_PATTERN);
-        const comments = await page.locator(COMMENT_PERMALINK_SELECTOR).count();
-        const actionable = await countVisibleActionButtons(page);
+    log.info('Loading top-level Instagram comments...');
+    await loadAllTopLevelComments(page, clickDelayMs, options.maxPasses ?? 24);
 
-        if (comments > 0) await page.locator(COMMENT_PERMALINK_SELECTOR).last().scrollIntoViewIfNeeded().catch(() => undefined);
-        await page.waitForTimeout(settleMs);
+    const remainingBefore = await countRemainingViewReplies(page);
+    log.info(`Visible "View replies" controls before expansion: ${String(remainingBefore)}`);
 
-        if (comments === previousCount && !clickedLoadMore && !clickedReplies && actionable.loadMore === 0 && actionable.replies === 0) {
-            stablePasses += 1;
-        } else {
-            previousCount = comments;
-            stablePasses = 0;
-        }
-    }
+    await expandAllReplyThreads(page, clickDelayMs);
+    await page.waitForTimeout(settleMs);
 
-    const actionable = await countVisibleActionButtons(page);
-    const extracted = stablePasses >= 3 || (actionable.loadMore === 0 && actionable.replies === 0);
+    const remainingAfter = await countRemainingViewReplies(page);
     const comments = deduplicateComments(await extractVisibleComments(page));
-    log.info(`Extracted ${comments.length} Instagram comments.`);
+    const replyCount = comments.filter((comment) => comment.parentId).length;
+
+    log.info(
+        `Extracted ${comments.length} Instagram comments (${replyCount} nested replies, `
+        + `${String(remainingAfter)} "View replies" still visible).`,
+    );
+
+    const loadMoreVisible = await page.getByRole('button', { name: new RegExp(`^${LOAD_MORE_COMMENTS_LABEL}$`, 'i') })
+        .first()
+        .isVisible()
+        .catch(() => false);
+    const extracted = remainingAfter === 0 && !loadMoreVisible && comments.length > 0;
     return { comments, extracted };
 };

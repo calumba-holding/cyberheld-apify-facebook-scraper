@@ -291,4 +291,12 @@ describe('parseCliArgs', () => {
             'https://www.threads.net/@example/post/abc',
         ])).toThrowError('--target must be one of: facebook, instagram');
     });
+
+    it('parses watch with npm/pnpm passthrough -- separator', () => {
+        const parsed = parseCliArgs(['watch', '--', '--config', 'farm/config/worker-1.json', '--once']);
+        expect(parsed.kind).toBe('watch');
+        if (parsed.kind !== 'watch') return;
+        expect(parsed.options.configPath).toBe('farm/config/worker-1.json');
+        expect(parsed.options.once).toBe(true);
+    });
 });
