@@ -1,4 +1,4 @@
-import type { BrowserContext } from 'playwright';
+import type { BrowserContext, Page } from 'playwright';
 
 import { log } from '../common/logger.js';
 import { launchPersistentChromeContext, launchTemporaryChromeContext } from '../common/persistent-browser.js';
@@ -6,6 +6,7 @@ import type { LaunchBrowserOptions, ProfileLoginOptions, RunScrapeOptions } from
 import { slowlyScrollToTop } from '../common/video-context.js';
 import { COMMENT_REACTIONS_SCRAPER, scrapeCommentReactions } from './scrapers/comment-reactions/index.js';
 import { POST_ENGAGEMENT_SCRAPER, scrapePostEngagement } from './scrapers/post-engagement/index.js';
+import { POST_SCREENSHOT_SCRAPER, scrapePostScreenshot } from './scrapers/post-screenshot/index.js';
 import type { GraphqlRequestTemplate } from './scrapers/post-engagement/public-post-api-graphql.js';
 import { tryOpenFacebookPublicPostViaPageRoot } from './scrapers/post-engagement/public-post-api.js';
 import { captureFacebookBlockedPageArtifact } from './shared/block-diagnostics.js';
@@ -46,6 +47,50 @@ const openProfileLoginBrowser = async (options: ProfileLoginOptions): Promise<Br
     return context;
 };
 
+/** Run post-engagement on an existing tab (watch mode — does not close the page). */
+export const runPostEngagementScrapeOnPage = async (
+    page: Page,
+    targetUrl: string,
+    options: RunScrapeOptions,
+): Promise<FacebookScrapeResult> => {
+    const resolvedTargetUrl = await resolveFacebookPostUrl(targetUrl);
+    if (resolvedTargetUrl !== targetUrl) log.info(`Resolved shared URL to: ${resolvedTargetUrl}`);
+
+    const resolvedEntryUrl = options.browserSessionMode === 'public-session'
+        ? rewriteFacebookReelUrlToWatchUrl(resolvedTargetUrl)
+        : resolvedTargetUrl;
+
+    await page.goto(resolvedEntryUrl, {
+        waitUntil: 'domcontentloaded',
+        timeout: options.requestTimeoutSecs * 1000,
+    });
+
+    const finalUrl = sanitizeFacebookPostUrl(page.url());
+    if (finalUrl !== resolvedEntryUrl) log.info(`Facebook navigation landed on: ${finalUrl}`);
+    if (!isEquivalentFacebookTargetUrl(resolvedEntryUrl, finalUrl)) {
+        const blockedPage = await captureFacebookBlockedPageArtifact(page, finalUrl, options);
+        const error = new Error(
+            isFacebookLoginOrHomeUrl(finalUrl)
+                ? 'Facebook redirected away from the requested post to a login/home page. This usually means a login wall or bot check blocked the scrape.'
+                : `Facebook redirected away from the requested post: ${finalUrl}`,
+        ) as Error & { blockedPage?: Awaited<ReturnType<typeof captureFacebookBlockedPageArtifact>> };
+        error.blockedPage = blockedPage;
+        throw error;
+    }
+
+    return scrapePostEngagement(page, targetUrl, finalUrl, options.waitAfterNavigationMs, {
+        artifactRootDir: options.artifactRootDir,
+        browserSessionMode: options.browserSessionMode,
+        download: options.download ?? true,
+        itemIndex: options.itemIndex,
+        outputFile: options.outputFile,
+        profileDir: getProfileDir(options.profileRootDir, options.browserSessionMode),
+        regenerateScript: options.regenerateScript ?? false,
+        runId: options.runId,
+        commentsOnly: options.commentsOnly,
+    });
+};
+
 const runScrape = async (
     context: BrowserContext,
     scraper: string,
@@ -61,6 +106,12 @@ const runScrape = async (
     };
 
     try {
+        if (scraper === POST_ENGAGEMENT_SCRAPER && options.browserSessionMode === 'persistent-profile') {
+            const scrapeResult = await runPostEngagementScrapeOnPage(page, targetUrl, options);
+            await closePage();
+            return scrapeResult;
+        }
+
         const resolvedTargetUrl = await resolveFacebookPostUrl(targetUrl);
         if (resolvedTargetUrl !== targetUrl) log.info(`Resolved shared URL to: ${resolvedTargetUrl}`);
 
@@ -94,7 +145,7 @@ const runScrape = async (
                     timeout: options.requestTimeoutSecs * 1000,
                 });
             }
-        } else {
+        } else if (scraper !== POST_ENGAGEMENT_SCRAPER) {
             const capturePublicTemplate = (request: import('playwright').Request): void => {
                 if (publicGraphqlTemplate || !request.url().includes('/api/graphql/')) return;
                 const params = new URLSearchParams(request.postData() || '');
@@ -134,7 +185,9 @@ const runScrape = async (
         }
 
         let scrapeResult: FacebookScrapeResult;
-        if (scraper === POST_ENGAGEMENT_SCRAPER) {
+        if (scraper === POST_SCREENSHOT_SCRAPER) {
+            scrapeResult = await scrapePostScreenshot(page, targetUrl, finalUrl, options);
+        } else if (scraper === POST_ENGAGEMENT_SCRAPER) {
             scrapeResult = await scrapePostEngagement(page, targetUrl, finalUrl, options.waitAfterNavigationMs, {
                 artifactRootDir: options.artifactRootDir,
                 browserSessionMode: options.browserSessionMode,
@@ -168,7 +221,7 @@ const runScrape = async (
 
 export const facebookPlugin: FacebookPlugin = {
     target: 'facebook',
-    scrapers: [POST_ENGAGEMENT_SCRAPER, COMMENT_REACTIONS_SCRAPER],
+    scrapers: [POST_ENGAGEMENT_SCRAPER, POST_SCREENSHOT_SCRAPER, COMMENT_REACTIONS_SCRAPER],
     getProfileDir,
     launchBrowser,
     openProfileLoginBrowser,
