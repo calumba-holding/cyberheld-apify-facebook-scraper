@@ -118,16 +118,56 @@ export const scrapePostEngagement = async (
             if (savedResult) return savedResult;
         }
 
-        // Path B: standard DOM extraction
-        const scope = await resolvePostScope(page, finalUrl);
-        const postContent = await extractPostContent(scope);
+        const extractCommentsWithRecovery = async (): Promise<{
+            scope: Awaited<ReturnType<typeof resolvePostScope>>;
+            postContent: Awaited<ReturnType<typeof extractPostContent>>;
+            commentFilter: Awaited<ReturnType<typeof switchToAllComments>>;
+            domComments: Awaited<ReturnType<typeof extractAllComments>>;
+        }> => {
+            const scope = await resolvePostScope(page, finalUrl);
+            const postContent = await extractPostContent(scope);
 
-        log.info(`Page URL before comment scrape: ${page.url()}`);
-        const initialComments = await extractAllComments(page, scope);
-        const commentFilter = await switchToAllComments(page, scope);
-        const domComments = commentFilter.shouldReloadComments
-            ? await extractAllComments(page, scope)
-            : initialComments;
+            log.info(`Page URL before comment scrape: ${page.url()}`);
+            const initialComments = await extractAllComments(page, scope);
+            const commentFilter = await switchToAllComments(page, scope);
+            const domComments = commentFilter.shouldReloadComments
+                ? await extractAllComments(page, scope)
+                : initialComments;
+
+            // Some Facebook renders intermittently show 0 comments even when comments exist.
+            // In watch mode, treat 0 as suspicious and do a single recovery reload.
+            if (domComments.length === 0) {
+                log.warning('Extracted 0 DOM comments — retrying once after reloading the post.');
+                await page.goto(finalUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+                await page.waitForTimeout(Math.min(waitAfterNavigationMs, 5000));
+
+                const retryScope = await resolvePostScope(page, finalUrl);
+                const retryPostContent = await extractPostContent(retryScope);
+
+                log.info(`Page URL before comment scrape (retry): ${page.url()}`);
+                const retryInitial = await extractAllComments(page, retryScope);
+                const retryFilter = await switchToAllComments(page, retryScope);
+                const retryDom = retryFilter.shouldReloadComments
+                    ? await extractAllComments(page, retryScope)
+                    : retryInitial;
+
+                if (retryDom.length > 0) {
+                    log.info(`Recovery succeeded — extracted ${String(retryDom.length)} DOM comments after reload.`);
+                    return {
+                        scope: retryScope,
+                        postContent: retryPostContent,
+                        commentFilter: retryFilter,
+                        domComments: retryDom,
+                    };
+                }
+                log.warning('Recovery retry still returned 0 DOM comments.');
+            }
+
+            return { scope, postContent, commentFilter, domComments };
+        };
+
+        // Path B: standard DOM extraction (with recovery)
+        const { scope, postContent, commentFilter, domComments } = await extractCommentsWithRecovery();
         const relayComments = options.browserSessionMode === 'public-session' && isFacebookVideoUrl(finalUrl)
             ? await extractVisiblePublicCommentsFromRelayStore(page)
             : [];
