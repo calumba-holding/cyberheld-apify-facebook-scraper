@@ -36,6 +36,8 @@ const launchChromeContext = async (
         ? [
             '--no-sandbox',
             '--disable-dev-shm-usage',
+            // Avoid Chrome UI bubble that can steal focus/cover viewport after crashes.
+            '--disable-session-crashed-bubble',
             '--window-position=0,0',
             '--window-size=1366,768',
             '--start-maximized',
