@@ -4,6 +4,7 @@ import type {
     CommentReactionUser,
     EngagementScrapeResult,
     ReactionUser,
+    ScreenshotScrapeResult,
     ScrapedComment,
     TargetPlugin,
 } from '../common/types.js';
@@ -16,7 +17,7 @@ export type {
     ScrapedComment,
 };
 
-export type FacebookScrapeResult = EngagementScrapeResult;
+export type FacebookScrapeResult = EngagementScrapeResult | ScreenshotScrapeResult;
 
 export type FacebookPlugin = TargetPlugin;
 
