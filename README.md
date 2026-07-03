@@ -6,9 +6,11 @@ Current plugin support:
 - `facebook`
   - scraper: `post-engagement`
   - scraper: `comment-reactions`
+  - scraper: `post-screenshot`
 - `instagram`
   - scraper: `post-engagement`
   - scraper: `profile-scraper`
+  - scraper: `post-screenshot`
 
 The CLI reuses a persistent Chrome profile per target by default, can open a persistent non-login public Facebook profile or a temporary guest Chrome session for Facebook, always prints JSON to stdout, and records browser video via Playwright by default while scraping.
 
