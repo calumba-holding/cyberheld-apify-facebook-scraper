@@ -341,6 +341,24 @@ describe('parseCliArgs', () => {
         }
     });
 
+    it('accepts --artifact-root-dir for scrape runs', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-screenshot',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+            '--artifact-root-dir',
+            './out/artifacts',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.artifactRootDir).toBe('./out/artifacts');
+        }
+    });
+
     it('throws an error when max-retries is outside the supported range', () => {
         expect(() => parseCliArgs([
             '--target',

@@ -39,6 +39,7 @@ Options:
   --output-file <path>       Also write the final JSON to a file
   --chrome-executable <path> Chrome executable path
   --profile-root-dir <dir>   Root dir for persistent target profiles
+  --artifact-root-dir <dir>  Root dir for screenshots/artifacts (default: SCRAPE_ARTIFACT_ROOT_DIR or temp)
   --wait-after-navigation-ms <ms>
                              Extra wait after navigation (default: 5000)
   --request-timeout-secs <s> Navigation timeout (default: 240)

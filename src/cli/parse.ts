@@ -59,7 +59,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     let waitAfterNavigationMs = parseInteger(process.env.SCRAPE_WAIT_AFTER_NAVIGATION_MS ?? '5000', 'waitAfterNavigationMs', 0, 120000);
     let requestTimeoutSecs = parseInteger(process.env.SCRAPE_REQUEST_TIMEOUT_SECS ?? '240', 'requestTimeoutSecs', 30, 3600);
     let concurrency = parseInteger(process.env.SCRAPE_CONCURRENCY ?? '1', 'concurrency', 1, 32);
-    const artifactRootDir = process.env.SCRAPE_ARTIFACT_ROOT_DIR ?? defaultArtifactRootDir;
+    let artifactRootDir = process.env.SCRAPE_ARTIFACT_ROOT_DIR ?? defaultArtifactRootDir;
     let verbose = false;
     let regenerateScript = false;
     let fullPageScreenshot = false;
@@ -158,6 +158,10 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
                 break;
             case '--item-delay-ms':
                 itemDelayMs = parseInteger(takeValue(argv, index, '--item-delay-ms'), 'itemDelayMs', 0, 60000);
+                index += 1;
+                break;
+            case '--artifact-root-dir':
+                artifactRootDir = takeValue(argv, index, '--artifact-root-dir');
                 index += 1;
                 break;
             default:

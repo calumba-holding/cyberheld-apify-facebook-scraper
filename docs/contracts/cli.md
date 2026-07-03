@@ -47,6 +47,7 @@ node dist/main.js [scrape] profile path --target <target>
 - `--output-file <path>`
 - `--chrome-executable <path>`
 - `--profile-root-dir <dir>`
+- `--artifact-root-dir <dir>` (root dir for screenshots and other artifacts; default `SCRAPE_ARTIFACT_ROOT_DIR` or OS temp dir)
 - `--wait-after-navigation-ms <ms>`
 - `--request-timeout-secs <s>`
 - `--regenerate-script` (skip the saved self-healing extraction script for this run)
