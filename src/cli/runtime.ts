@@ -13,6 +13,7 @@ import { runWatchService } from '../watch/service.js';
 import type { ParsedCli, ProfileStatusOutput, RunCliOptions } from './types.js';
 import { resolveRunOutputFile } from './output-paths.js';
 import { finalizeVideoArtifact, prepareRawVideoDir } from './video-artifacts.js';
+import { runWorkerPool } from './worker-pool.js';
 const ensureParentDirectory = async (filePath: string): Promise<void> => {
     await mkdir(dirname(filePath), { recursive: true });
 };
@@ -41,7 +42,7 @@ const mapLimit = async <T, R>(items: T[], limit: number, worker: (item: T, index
     return results;
 };
 
-const runScrapeCommand = async (options: RunCliOptions): Promise<ScrapeRunOutput> => {
+export const runScrapeCommand = async (options: RunCliOptions): Promise<ScrapeRunOutput> => {
     const runId = randomUUID();
     const startedAt = new Date().toISOString();
     const plugin = getTargetPlugin(options.target) as TargetPlugin;
@@ -184,7 +185,9 @@ export const runCli = async (parsed: ParsedCli): Promise<void> => {
     }
 
     setVerboseLogging(parsed.options.verbose);
-    const outputJson = await runScrapeCommand(parsed.options);
+    const outputJson = parsed.options.workers > 1
+        ? await runWorkerPool(parsed.options)
+        : await runScrapeCommand(parsed.options);
     await emitJson(outputJson, resolveRunOutputFile(parsed.options.outputFile, outputJson.run.runId));
     if (outputJson.summary.failed > 0) process.exitCode = 1;
 };

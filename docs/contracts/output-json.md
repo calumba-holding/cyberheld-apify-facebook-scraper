@@ -16,6 +16,8 @@ All scrape runs emit one JSON object to stdout.
     concurrency: number;
     requestedUrls: number;
     browserSession: 'persistent-profile' | 'public-session' | 'guest-session';
+    workers?: number;            // present only when --workers > 1
+    workerConcurrency?: number;  // present only when --workers > 1
   };
   summary: {
     succeeded: number;
@@ -174,6 +176,15 @@ They do not need to populate:
 - `post`
 - `comments`
 - `completeness`
+
+## Worker pool rule
+
+When `--workers > 1`, `run.workers` and `run.workerConcurrency` are populated and `run.concurrency` reports the
+per-worker tab concurrency (i.e. `--worker-concurrency`). `results` preserves the original `--target-url`/`--urls-file`
+input order regardless of which worker finished first. `profileDir` reports the shared `--profile-root-dir` root;
+actual per-worker Chrome profiles live under `<profileDir>/worker-N`. `artifacts.video` reports the first present
+worker video when multiple workers recorded one; check each worker's own run artifacts directory for the rest.
+When `--workers` is omitted or `1`, the output shape is unchanged from the single-process path.
 
 ## Backward-compatibility rule
 

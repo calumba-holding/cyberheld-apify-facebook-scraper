@@ -43,6 +43,10 @@ Options:
                              Extra wait after navigation (default: 5000)
   --request-timeout-secs <s> Navigation timeout (default: 240)
   --regenerate-script        Skip the saved self-healing extraction script for this run
+  --workers <n>              Number of parallel Chrome worker processes (default: 1)
+  --worker-concurrency <n>   Tabs per worker process when --workers > 1 (default: 4)
+  --worker-start-delay-ms <ms>
+                             Stagger delay between worker starts (default: 2000)
   --verbose                  Print debug logs to stderr
   -h, --help                 Show help
   --version                  Show version
@@ -57,6 +61,9 @@ Output:
 Notes:
   - comment-reactions requires a Facebook URL containing ?comment_id=...
   - --public-session and --guest-session are currently supported only for --target facebook
+  - --workers > 1 forks separate Chrome processes; workers * worker-concurrency must not exceed 100
+  - for persistent-profile and --public-session runs, each worker N uses <profile-root-dir>/worker-N and must be
+    logged in ahead of time via: scrape profile login --target <target> --profile-root-dir <profile-root-dir>/worker-N
 
 Examples:
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
@@ -70,6 +77,7 @@ Examples:
   scrape --target instagram --scraper post-screenshot --target-url "https://www.instagram.com/reel/A" --target-url "https://www.instagram.com/reel/B" --concurrency 2
   scrape --target facebook --scraper post-screenshot --target-url "https://www.facebook.com/..." --public-session
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/a" --target-url "https://www.facebook.com/b" --concurrency 2
+  scrape --target instagram --scraper post-screenshot --urls-file ./jobs/reels.txt --workers 10 --worker-concurrency 10 --no-screen-video
   scrape profile login --target facebook
   scrape profile login --target instagram
   scrape profile path --target facebook
@@ -91,6 +99,9 @@ Environment:
   SCRAPE_REQUEST_TIMEOUT_SECS
   SCRAPE_SCREEN_VIDEO
   SCRAPE_CONCURRENCY
+  SCRAPE_WORKERS
+  SCRAPE_WORKER_CONCURRENCY
+  SCRAPE_WORKER_START_DELAY_MS
   SCRAPE_ARTIFACT_ROOT_DIR
   SCRAPE_LLM_API_KEY
   SCRAPE_LLM_MODEL

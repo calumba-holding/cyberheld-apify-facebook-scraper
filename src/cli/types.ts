@@ -19,6 +19,9 @@ export interface RunCliOptions {
     regenerateScript: boolean;
     fullPageScreenshot: boolean;
     expandComments: boolean;
+    workers: number;
+    workerConcurrency: number;
+    workerStartDelayMs: number;
 }
 
 export interface ProfileLoginCliOptions {

@@ -64,6 +64,8 @@ export type ScrapeRunOutput = {
         concurrency: number;
         requestedUrls: number;
         browserSession: BrowserSessionMode;
+        workers?: number;
+        workerConcurrency?: number;
     };
     summary: {
         succeeded: number;

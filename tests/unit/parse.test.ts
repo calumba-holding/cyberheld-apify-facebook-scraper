@@ -299,4 +299,61 @@ describe('parseCliArgs', () => {
         expect(parsed.options.configPath).toBe('farm/config/worker-1.json');
         expect(parsed.options.once).toBe(true);
     });
+
+    it('defaults workers to 1 and worker-concurrency to 4 when omitted', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.workers).toBe(1);
+            expect(parsed.options.workerConcurrency).toBe(4);
+            expect(parsed.options.workerStartDelayMs).toBe(2000);
+        }
+    });
+
+    it('parses --workers, --worker-concurrency and --worker-start-delay-ms', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'instagram',
+            '--scraper',
+            'post-screenshot',
+            '--target-url',
+            'https://www.instagram.com/reel/example/',
+            '--workers',
+            '5',
+            '--worker-concurrency',
+            '10',
+            '--worker-start-delay-ms',
+            '500',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.workers).toBe(5);
+            expect(parsed.options.workerConcurrency).toBe(10);
+            expect(parsed.options.workerStartDelayMs).toBe(500);
+        }
+    });
+
+    it('throws an error when workers * worker-concurrency exceeds 100', () => {
+        expect(() => parseCliArgs([
+            '--target',
+            'instagram',
+            '--scraper',
+            'post-screenshot',
+            '--target-url',
+            'https://www.instagram.com/reel/example/',
+            '--workers',
+            '11',
+            '--worker-concurrency',
+            '10',
+        ])).toThrowError('workers * worker-concurrency must not exceed 100.');
+    });
 });

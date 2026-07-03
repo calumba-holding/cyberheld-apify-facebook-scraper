@@ -409,21 +409,21 @@ Unchanged:
 
 ### Phase 2 — Parallelism uplift (2–3 days)
 
-| Task | Notes |
-|------|-------|
-| **P2-1** Raise `--concurrency` max 16 → 32 (configurable constant) | Load-test on dev machine |
-| **P2-2** Implement `src/cli/worker-pool.ts` | Fork model |
-| **P2-3** Add `--workers`, `--worker-concurrency`, `--urls-file` | Parse + validate product ≤ 100 |
-| **P2-4** Profile sharding for workers | `getProfileDir(root, mode, workerIndex?)` |
-| **P2-5** Merge partial outputs in parent | Preserve URL order |
-| **P2-6** Retries + `--item-delay-ms` | Scraper-level or runtime-level |
-| **P2-7** Integration test: 20 URLs, 4 workers × 5 concurrency | CI may use mocked/smoke only |
-| **P2-8** Ops doc: RAM guidelines, recommended worker counts | `docs/operations/parallel-evidence.md` |
+| Task | Notes | Status |
+|------|-------|--------|
+| **P2-1** Raise `--concurrency` max 16 → 32 (configurable constant) | Load-test on dev machine | Not done — left at 16 |
+| **P2-2** Implement `src/cli/worker-pool.ts` | Fork model (Option A) | Done — `child_process.fork` per worker, IPC request/response |
+| **P2-3** Add `--workers`, `--worker-concurrency`, `--urls-file` | Parse + validate product ≤ 100 | Done (`--urls-file` already existed) |
+| **P2-4** Profile sharding for workers | Per-worker `<profile-root-dir>/worker-N` for persistent-profile/public-session; guest-session unaffected (already unique temp dirs) | Done |
+| **P2-5** Merge partial outputs in parent | Contiguous chunking + worker-order concatenation preserves input URL order | Done, verified with a real 2-worker run |
+| **P2-6** Retries + `--item-delay-ms` | Scraper-level or runtime-level | Not done |
+| **P2-7** Integration test: 20 URLs, 4 workers × 5 concurrency | CI may use mocked/smoke only | Partial — unit tests for chunking/parsing added (`tests/unit/worker-pool.test.ts`, `tests/unit/parse.test.ts`); no automated 20-URL browser integration test yet |
+| **P2-8** Ops doc: RAM guidelines, recommended worker counts | `docs/operations/parallel-evidence.md` | Not done |
 
 **Definition of done (phase 2):**
 
-- 100 URLs complete with `--workers 10 --worker-concurrency 10` on reference hardware (document actual runtime).
-- No duplicate `runId` artifact collisions between workers.
+- 100 URLs complete with `--workers 10 --worker-concurrency 10` on reference hardware (document actual runtime). — not yet load-tested at this scale; verified end-to-end at small scale (2 workers, real Instagram reel URL, isolated profile dirs confirmed via file mtimes).
+- No duplicate `runId` artifact collisions between workers. — each worker generates its own `runId` inside `runScrapeCommand`; confirmed distinct in the verification run.
 
 ### Phase 3 — Product polish (optional, 2 days)
 

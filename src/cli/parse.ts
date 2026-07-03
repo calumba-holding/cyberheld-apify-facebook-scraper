@@ -106,6 +106,9 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     let regenerateScript = false;
     let fullPageScreenshot = false;
     let expandComments = true;
+    let workers = parseInteger(process.env.SCRAPE_WORKERS ?? '1', 'workers', 1, 20);
+    let workerConcurrency = parseInteger(process.env.SCRAPE_WORKER_CONCURRENCY ?? '4', 'workerConcurrency', 1, 16);
+    let workerStartDelayMs = parseInteger(process.env.SCRAPE_WORKER_START_DELAY_MS ?? '2000', 'workerStartDelayMs', 0, 60000);
 
     for (let index = 0; index < argv.length; index++) {
         const arg = argv[index];
@@ -177,6 +180,18 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
             case '--regenerate-script':
                 regenerateScript = true;
                 break;
+            case '--workers':
+                workers = parseInteger(takeValue(argv, index, '--workers'), 'workers', 1, 20);
+                index += 1;
+                break;
+            case '--worker-concurrency':
+                workerConcurrency = parseInteger(takeValue(argv, index, '--worker-concurrency'), 'workerConcurrency', 1, 16);
+                index += 1;
+                break;
+            case '--worker-start-delay-ms':
+                workerStartDelayMs = parseInteger(takeValue(argv, index, '--worker-start-delay-ms'), 'workerStartDelayMs', 0, 60000);
+                index += 1;
+                break;
             default:
                 throw new Error(`Unknown argument: ${arg}`);
         }
@@ -192,6 +207,9 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     }
     if (browserSessionMode !== 'persistent-profile' && target !== 'facebook') {
         throw new Error('--public-session and --guest-session are currently supported only for --target facebook.');
+    }
+    if (workers > 1 && workers * workerConcurrency > 100) {
+        throw new Error('workers * worker-concurrency must not exceed 100.');
     }
     return {
         command: 'run',
@@ -212,6 +230,9 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
         regenerateScript,
         fullPageScreenshot,
         expandComments,
+        workers,
+        workerConcurrency,
+        workerStartDelayMs,
     };
 };
 

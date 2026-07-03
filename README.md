@@ -207,6 +207,33 @@ node dist/main.js \
   --concurrency 3
 ```
 
+## Scrape a large batch across a worker pool
+
+For batches beyond one Chrome process's practical tab limit (~16 tabs), use `--workers` to fork separate Chrome
+worker processes, each running `--worker-concurrency` tabs:
+
+```bash
+node dist/main.js \
+  --target instagram \
+  --scraper post-screenshot \
+  --urls-file ./jobs/reels.txt \
+  --workers 10 \
+  --worker-concurrency 10 \
+  --no-screen-video \
+  --output-file ./out/ig-batch.json
+```
+
+`--workers * --worker-concurrency` must not exceed 100. For authenticated targets (Instagram, and Facebook without
+`--public-session`/`--guest-session`), log into each worker's profile once before running a batch:
+
+```bash
+node dist/main.js profile login --target instagram --profile-root-dir ~/.scrape/profiles/worker-0
+node dist/main.js profile login --target instagram --profile-root-dir ~/.scrape/profiles/worker-1
+# ...one per worker index used
+```
+
+See [docs/contracts/cli.md](docs/contracts/cli.md#worker-pool---workers--1) for the full contract.
+
 ## Save JSON while keeping the default browser video
 
 ```bash

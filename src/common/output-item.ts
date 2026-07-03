@@ -192,6 +192,7 @@ export const buildRunOutput = (
     requestedUrls: number,
     video: VideoArtifact,
     results: ScrapeItemOutput[],
+    workerInfo?: { workers: number; workerConcurrency: number },
 ): ScrapeRunOutput => {
     const summary = results.reduce((acc, result) => {
         if (result.scrape.status === 'FAILED') acc.failed += 1;
@@ -211,6 +212,7 @@ export const buildRunOutput = (
             concurrency,
             requestedUrls,
             browserSession: browserSessionMode,
+            ...(workerInfo ? { workers: workerInfo.workers, workerConcurrency: workerInfo.workerConcurrency } : {}),
         },
         summary,
         artifacts: { video },

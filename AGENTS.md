@@ -10,8 +10,11 @@ Current implementation:
 - target: `facebook`
 - scraper: `post-engagement`
 - scraper: `comment-reactions`
+- scraper: `post-screenshot`
 - target: `instagram`
 - scraper: `post-engagement`
+- scraper: `profile-scraper`
+- scraper: `post-screenshot`
 
 The scraper:
 - reuses a persistent Chrome profile per target
