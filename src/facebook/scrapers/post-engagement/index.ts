@@ -1,5 +1,5 @@
 import { log } from '../../../common/logger.js';
-import type { BrowserSessionMode, SelfHealingArtifact } from '../../../common/types.js';
+import type { BrowserSessionMode, EngagementScrapeResult, ScrapedComment, SelfHealingArtifact } from '../../../common/types.js';
 import { switchToAllComments } from '../../comment-filter.js';
 import { extractAllComments } from '../../comments.js';
 import { extractPostContent } from '../../post-extraction.js';
@@ -7,7 +7,7 @@ import { extractAllReactions } from '../../reactions.js';
 import { resolvePostScope } from '../../shared/post-scope.js';
 import { startFacebookSourceVideoDownload } from '../../shared/source-video.js';
 import { isEquivalentFacebookTargetUrl, isFacebookVideoUrl } from '../../shared/url.js';
-import { buildCommentKey, type FacebookScrapeResult } from '../../types.js';
+import { buildCommentKey } from '../../types.js';
 import {
     tryGenerateAndSavePostEngagementScript,
     trySavedPostEngagementScript,
@@ -27,11 +27,13 @@ interface PostEngagementScrapeOptions {
     publicPostApiPayload?: string;
     regenerateScript: boolean;
     runId: string;
+    /** Skip reaction modal scrape (watch polls). */
+    commentsOnly?: boolean;
 }
 
-const mergeScrapedComments = (...collections: FacebookScrapeResult['comments'][]): FacebookScrapeResult['comments'] => {
+const mergeScrapedComments = (...collections: ScrapedComment[][]): ScrapedComment[] => {
     const seen = new Set<string>();
-    const merged = [] as FacebookScrapeResult['comments'];
+    const merged: ScrapedComment[] = [];
     for (const comments of collections) {
         for (const comment of comments) {
             const key = buildCommentKey(comment);
@@ -44,9 +46,9 @@ const mergeScrapedComments = (...collections: FacebookScrapeResult['comments'][]
 };
 
 const withSelfHealingArtifacts = (
-    result: FacebookScrapeResult,
+    result: EngagementScrapeResult,
     artifacts: SelfHealingArtifact[],
-): FacebookScrapeResult => (
+): EngagementScrapeResult => (
     artifacts.length > 0 ? { ...result, selfHealing: artifacts } : result
 );
 
@@ -58,7 +60,7 @@ export const scrapePostEngagement = async (
     finalUrl: string,
     waitAfterNavigationMs: number,
     options: PostEngagementScrapeOptions,
-): Promise<FacebookScrapeResult> => {
+): Promise<EngagementScrapeResult> => {
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(waitAfterNavigationMs);
 
@@ -111,26 +113,88 @@ export const scrapePostEngagement = async (
                 sourceVideo,
                 options,
                 selfHealingArtifacts,
+                options.commentsOnly,
             );
             if (savedResult) return savedResult;
         }
 
-        // Path B: standard DOM extraction
-        const scope = await resolvePostScope(page, finalUrl);
-        const postContent = await extractPostContent(scope);
+        const extractCommentsWithRecovery = async (): Promise<{
+            scope: Awaited<ReturnType<typeof resolvePostScope>>;
+            postContent: Awaited<ReturnType<typeof extractPostContent>>;
+            commentFilter: Awaited<ReturnType<typeof switchToAllComments>>;
+            domComments: Awaited<ReturnType<typeof extractAllComments>>;
+        }> => {
+            const scope = await resolvePostScope(page, finalUrl);
+            const postContent = await extractPostContent(scope);
 
-        log.info(`Page URL before comment scrape: ${page.url()}`);
-        const initialComments = await extractAllComments(page, scope);
-        const commentFilter = await switchToAllComments(page, scope);
-        const domComments = commentFilter.shouldReloadComments
-            ? await extractAllComments(page, scope)
-            : initialComments;
+            log.info(`Page URL before comment scrape: ${page.url()}`);
+            const initialComments = await extractAllComments(page, scope);
+            const commentFilter = await switchToAllComments(page, scope);
+            const domComments = commentFilter.shouldReloadComments
+                ? await extractAllComments(page, scope)
+                : initialComments;
+
+            // Some Facebook renders intermittently show 0 comments even when comments exist.
+            // In watch mode, treat 0 as suspicious and do a single recovery reload.
+            if (domComments.length === 0) {
+                log.warning('Extracted 0 DOM comments — retrying once after reloading the post.');
+                await page.goto(finalUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+                await page.waitForTimeout(Math.min(waitAfterNavigationMs, 5000));
+
+                const retryScope = await resolvePostScope(page, finalUrl);
+                const retryPostContent = await extractPostContent(retryScope);
+
+                log.info(`Page URL before comment scrape (retry): ${page.url()}`);
+                const retryInitial = await extractAllComments(page, retryScope);
+                const retryFilter = await switchToAllComments(page, retryScope);
+                const retryDom = retryFilter.shouldReloadComments
+                    ? await extractAllComments(page, retryScope)
+                    : retryInitial;
+
+                if (retryDom.length > 0) {
+                    log.info(`Recovery succeeded — extracted ${String(retryDom.length)} DOM comments after reload.`);
+                    return {
+                        scope: retryScope,
+                        postContent: retryPostContent,
+                        commentFilter: retryFilter,
+                        domComments: retryDom,
+                    };
+                }
+                log.warning('Recovery retry still returned 0 DOM comments.');
+            }
+
+            return { scope, postContent, commentFilter, domComments };
+        };
+
+        // Path B: standard DOM extraction (with recovery)
+        const { scope, postContent, commentFilter, domComments } = await extractCommentsWithRecovery();
         const relayComments = options.browserSessionMode === 'public-session' && isFacebookVideoUrl(finalUrl)
             ? await extractVisiblePublicCommentsFromRelayStore(page)
             : [];
         const comments = mergeScrapedComments(domComments, relayComments);
         if (relayComments.length > 0 && comments.length > domComments.length) {
             log.info(`Merged ${String(relayComments.length)} visible public Relay comments into the post result.`);
+        }
+
+        const sourceVideo = sourceVideoDownload ? await sourceVideoDownload.promise : undefined;
+
+        if (options.commentsOnly) {
+            log.info(`Skipping post-reaction scrape (comments-only watch poll). Extracted ${String(comments.length)} comments.`);
+            return withSelfHealingArtifacts({
+                kind: 'engagement',
+                inputUrl,
+                finalUrl,
+                scrapedAt: new Date().toISOString(),
+                reactionCount: 0,
+                commentCount: comments.length,
+                commentsComplete: true,
+                postReactionsComplete: false,
+                commentVisibilityComplete: commentFilter.applied,
+                postContent,
+                reactions: [],
+                comments,
+                sourceVideo,
+            }, selfHealingArtifacts);
         }
 
         if (!isEquivalentFacebookTargetUrl(finalUrl, page.url())) {
@@ -142,7 +206,6 @@ export const scrapePostEngagement = async (
         const reactionScope = await resolvePostScope(page, finalUrl);
         log.info(`Page URL before reaction scrape: ${page.url()}`);
         const reactionResult = await extractAllReactions(page, reactionScope);
-        const sourceVideo = sourceVideoDownload ? await sourceVideoDownload.promise : undefined;
 
         await tryGenerateAndSavePostEngagementScript(
             page,

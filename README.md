@@ -6,9 +6,11 @@ Current plugin support:
 - `facebook`
   - scraper: `post-engagement`
   - scraper: `comment-reactions`
+  - scraper: `post-screenshot`
 - `instagram`
   - scraper: `post-engagement`
   - scraper: `profile-scraper`
+  - scraper: `post-screenshot`
 
 The CLI reuses a persistent Chrome profile per target by default, can open a persistent non-login public Facebook profile or a temporary guest Chrome session for Facebook, always prints JSON to stdout, and records browser video via Playwright by default while scraping.
 
@@ -37,9 +39,36 @@ src/
 
 ## Requirements
 
-- macOS
-- Google Chrome installed at `/Applications/Google Chrome.app`
+- macOS (local CLI) or Docker (multi-profile workers)
+- Google Chrome installed at `/Applications/Google Chrome.app` (local CLI)
 - Node.js `>= 20`
+
+## Docker — five isolated Facebook profiles
+
+### Always-on comment watch (recommended for Pascal)
+
+**Full guide:** [docs/WATCH-FARM-SETUP.md](docs/WATCH-FARM-SETUP.md) — five workers, five accounts, five post URLs, JSON events for new comments.
+
+```bash
+docker compose build
+./scripts/docker/setup-all-worker-configs.sh   # create farm/config/worker-1..5.json
+# Edit each worker-N.json with one post URL per worker
+./scripts/docker/observe-login.sh 1            # repeat for workers 2–5 (ports 6082–6085)
+./scripts/docker/watch-all-dev.sh              # run all five watchers in parallel
+```
+
+Artifacts: `docker/artifacts/worker-N/watch/fb-worker-N/events/`
+
+### One-off batch scrape (five URLs, no watch loop)
+
+See [docs/docker-infrastructure.md](docs/docker-infrastructure.md).
+
+```bash
+docker compose build
+docker compose run --rm --service-ports fb-worker-1 login
+cp docker/urls.example.txt docker/urls.txt
+./scripts/docker/batch-scrape.sh
+```
 
 ## Install
 
@@ -177,6 +206,38 @@ node dist/main.js \
   --target-url "https://www.facebook.com/post-c" \
   --concurrency 3
 ```
+
+## Scrape a large batch across a worker pool
+
+For batches beyond one Chrome process's practical tab limit (~16 tabs), use `--workers` to fork separate Chrome
+worker processes, each running `--worker-concurrency` tabs:
+
+```bash
+node dist/main.js \
+  --target instagram \
+  --scraper post-screenshot \
+  --urls-file ./jobs/reels.txt \
+  --workers 10 \
+  --worker-concurrency 10 \
+  --no-screen-video \
+  --output-file ./out/ig-batch.json
+```
+
+`--workers * --worker-concurrency` must not exceed 100. For authenticated targets (Instagram, and Facebook without
+`--public-session`/`--guest-session`), log into each worker's profile once before running a batch:
+
+```bash
+node dist/main.js profile login --target instagram --profile-root-dir ~/.scrape/profiles/worker-0
+node dist/main.js profile login --target instagram --profile-root-dir ~/.scrape/profiles/worker-1
+# ...one per worker index used
+```
+
+Failed items automatically retry (`--max-retries`, default 2) with exponential backoff, except login-wall/blocked-page
+failures, which fail fast. Use `--item-delay-ms` to pace requests within a worker.
+
+See [docs/contracts/cli.md](docs/contracts/cli.md#worker-pool---workers--1) for the full contract and
+[docs/operations/parallel-evidence.md](docs/operations/parallel-evidence.md) for RAM guidelines and recommended
+worker counts.
 
 ## Save JSON while keeping the default browser video
 

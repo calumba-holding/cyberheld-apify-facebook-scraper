@@ -9,6 +9,19 @@ node_modules
 apify_storage
 storage
 runs
+out
+coverage
+test-results
+playwright-report
+
+# Docker worker state
+docker/profiles/
+docker/artifacts/
+docker/urls.txt
+
+# Per-worker watch config (keep worker.example.json)
+farm/config/worker-*.json
+!farm/config/worker.example.json
 
 # Added by Apify CLI
 .venv
@@ -18,3 +31,7 @@ runs
 
 # Generated extraction scripts — local to each machine
 scripts.json
+
+# Local scratch files
+output_pascal.json
+request.json

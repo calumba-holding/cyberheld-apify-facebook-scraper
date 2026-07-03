@@ -1,0 +1,16 @@
+{
+  "workerId": "fb-worker-1",
+  "accountRef": "cm-001",
+  "pollIntervalSeconds": 90,
+  "commentsOnly": true,
+  "incident": {
+    "gapSeconds": 120,
+    "maxEvents": 50,
+    "maxDurationSeconds": 600
+  },
+  "posts": [
+    {
+      "postUrl": "https://www.facebook.com/PAGE_OR_USER/posts/POST_ID_OR_SHARE_URL"
+    }
+  ]
+}

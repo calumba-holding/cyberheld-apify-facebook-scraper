@@ -24,6 +24,7 @@ export const trySavedPostEngagementScript = async (
     sourceVideo?: LocalFileArtifact,
     artifactOptions?: SelfHealingArtifactOptions,
     selfHealing: SelfHealingArtifact[] = [],
+    commentsOnly = false,
 ): Promise<EngagementScrapeResult | null> => {
     const saved = await loadScript(TARGET, scraper);
     if (!saved) return null;
@@ -33,9 +34,13 @@ export const trySavedPostEngagementScript = async (
 
     if (scriptResult.ok && !scriptResult.empty && scriptResult.value !== null) {
         const raw = scriptResult.value as RawPostEngagementResult;
-        const fastResult = buildSavedScriptPostEngagementResult(raw, inputUrl, finalUrl, sourceVideo, selfHealing);
+        const fastResult = buildSavedScriptPostEngagementResult(raw, inputUrl, finalUrl, sourceVideo, selfHealing, commentsOnly);
         if (fastResult) {
-            log.info(`Saved script succeeded: ${raw.comments.length} comments, ${raw.reactions.length} reactions.`);
+            log.info(
+                commentsOnly
+                    ? `Saved script succeeded: ${String(raw.comments.length)} comments (comments-only).`
+                    : `Saved script succeeded: ${raw.comments.length} comments, ${raw.reactions.length} reactions.`,
+            );
             await saveScript(TARGET, scraper, saved.script);
             return fastResult;
         }
@@ -70,6 +75,7 @@ export const trySavedPostEngagementScript = async (
                 finalUrl,
                 sourceVideo,
                 selfHealing,
+                commentsOnly,
             );
             if (repairedFastResult) {
                 log.info(`Repaired script succeeded: ${raw.comments.length} comments, ${raw.reactions.length} reactions.`);

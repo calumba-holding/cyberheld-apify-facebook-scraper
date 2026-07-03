@@ -18,9 +18,11 @@ type LaunchPersistentChromeOptions = LaunchChromeOptions & {
 };
 
 const closeExtraBlankPages = async (context: BrowserContext): Promise<void> => {
-    await Promise.all(context.pages()
-        .filter((page) => page.url() === 'about:blank')
-        .map(async (page) => page.close().catch(() => undefined)));
+    const pages = context.pages();
+    const blankPages = pages.filter((page) => page.url() === 'about:blank');
+    // Closing the only tab kills persistent Chrome (especially in Docker/noVNC).
+    if (blankPages.length === 0 || blankPages.length === pages.length) return;
+    await Promise.all(blankPages.map(async (page) => page.close().catch(() => undefined)));
 };
 
 const launchChromeContext = async (
@@ -30,7 +32,19 @@ const launchChromeContext = async (
     await mkdir(profileDir, { recursive: true });
     const recordingEnabled = Boolean(options.recordVideoDir);
 
+    const dockerDisplayArgs = process.env.DISPLAY
+        ? [
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            // Avoid Chrome UI bubble that can steal focus/cover viewport after crashes.
+            '--disable-session-crashed-bubble',
+            '--window-position=0,0',
+            '--window-size=1366,768',
+            '--start-maximized',
+        ]
+        : [];
     const args = [
+        ...dockerDisplayArgs,
         ...(recordingEnabled ? ['--window-size=1280,720', '--disable-gpu'] : []),
         ...(options.stealth ? ['--disable-blink-features=AutomationControlled'] : []),
     ];

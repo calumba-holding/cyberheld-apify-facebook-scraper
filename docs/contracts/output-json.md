@@ -16,6 +16,8 @@ All scrape runs emit one JSON object to stdout.
     concurrency: number;
     requestedUrls: number;
     browserSession: 'persistent-profile' | 'public-session' | 'guest-session';
+    workers?: number;            // present only when --workers > 1
+    workerConcurrency?: number;  // present only when --workers > 1
   };
   summary: {
     succeeded: number;
@@ -44,6 +46,7 @@ All scrape runs emit one JSON object to stdout.
     runtime: 'cli';
     browser: 'persistent-chrome-profile' | 'guest-chrome-session';
     error?: string;
+    attempts?: number;  // present only when the item needed more than one attempt (see retry policy)
   };
   completeness?: {
     allCommentsFilterApplied: boolean;
@@ -174,6 +177,22 @@ They do not need to populate:
 - `post`
 - `comments`
 - `completeness`
+
+## Retry rule
+
+`scrape.attempts` is populated only when an item took more than one attempt (see `docs/contracts/cli.md` for the
+retry policy). A `SUCCEEDED` or `PARTIAL` item with `attempts: 2` means the first attempt produced zero screenshots
+(post-screenshot) or threw a non-blocked-page error and a later attempt produced the final result. A `FAILED` item
+with `attempts` set means every attempt failed; `scrape.error` reports the last attempt's error.
+
+## Worker pool rule
+
+When `--workers > 1`, `run.workers` and `run.workerConcurrency` are populated and `run.concurrency` reports the
+per-worker tab concurrency (i.e. `--worker-concurrency`). `results` preserves the original `--target-url`/`--urls-file`
+input order regardless of which worker finished first. `profileDir` reports the shared `--profile-root-dir` root;
+actual per-worker Chrome profiles live under `<profileDir>/worker-N`. `artifacts.video` reports the first present
+worker video when multiple workers recorded one; check each worker's own run artifacts directory for the rest.
+When `--workers` is omitted or `1`, the output shape is unchanged from the single-process path.
 
 ## Backward-compatibility rule
 

@@ -1,0 +1,7 @@
+# Example URLs for manual post-screenshot QA (copy to test-urls.txt; do not commit secrets)
+# Instagram (requires: node dist/main.js profile login --target instagram)
+https://www.instagram.com/reel/DU_bfUNDWwP/
+https://www.instagram.com/p/SHORTCODE/
+
+# Facebook public (use --public-session)
+https://www.facebook.com/share/p/EXAMPLE/

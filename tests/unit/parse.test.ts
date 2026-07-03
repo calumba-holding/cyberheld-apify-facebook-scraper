@@ -254,7 +254,7 @@ describe('parseCliArgs', () => {
             'https://www.facebook.com/example/posts/123',
             '--concurrency',
             '0',
-        ])).toThrowError('concurrency must be an integer between 1 and 16.');
+        ])).toThrowError('concurrency must be an integer between 1 and 32.');
     });
 
     it('throws an error when --public-session is used for a non-facebook target', () => {
@@ -290,5 +290,124 @@ describe('parseCliArgs', () => {
             '--target-url',
             'https://www.threads.net/@example/post/abc',
         ])).toThrowError('--target must be one of: facebook, instagram');
+    });
+
+    it('parses watch with npm/pnpm passthrough -- separator', () => {
+        const parsed = parseCliArgs(['watch', '--', '--config', 'farm/config/worker-1.json', '--once']);
+        expect(parsed.kind).toBe('watch');
+        if (parsed.kind !== 'watch') return;
+        expect(parsed.options.configPath).toBe('farm/config/worker-1.json');
+        expect(parsed.options.once).toBe(true);
+    });
+
+    it('defaults workers to 1 and worker-concurrency to 4 when omitted', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.workers).toBe(1);
+            expect(parsed.options.workerConcurrency).toBe(4);
+            expect(parsed.options.workerStartDelayMs).toBe(2000);
+            expect(parsed.options.maxRetries).toBe(2);
+            expect(parsed.options.itemDelayMs).toBe(0);
+        }
+    });
+
+    it('parses --max-retries and --item-delay-ms', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+            '--max-retries',
+            '0',
+            '--item-delay-ms',
+            '1500',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.maxRetries).toBe(0);
+            expect(parsed.options.itemDelayMs).toBe(1500);
+        }
+    });
+
+    it('accepts --artifact-root-dir for scrape runs', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-screenshot',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+            '--artifact-root-dir',
+            './out/artifacts',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.artifactRootDir).toBe('./out/artifacts');
+        }
+    });
+
+    it('throws an error when max-retries is outside the supported range', () => {
+        expect(() => parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+            '--max-retries',
+            '6',
+        ])).toThrowError('maxRetries must be an integer between 0 and 5.');
+    });
+
+    it('parses --workers, --worker-concurrency and --worker-start-delay-ms', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'instagram',
+            '--scraper',
+            'post-screenshot',
+            '--target-url',
+            'https://www.instagram.com/reel/example/',
+            '--workers',
+            '5',
+            '--worker-concurrency',
+            '10',
+            '--worker-start-delay-ms',
+            '500',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.workers).toBe(5);
+            expect(parsed.options.workerConcurrency).toBe(10);
+            expect(parsed.options.workerStartDelayMs).toBe(500);
+        }
+    });
+
+    it('throws an error when workers * worker-concurrency exceeds 100', () => {
+        expect(() => parseCliArgs([
+            '--target',
+            'instagram',
+            '--scraper',
+            'post-screenshot',
+            '--target-url',
+            'https://www.instagram.com/reel/example/',
+            '--workers',
+            '11',
+            '--worker-concurrency',
+            '10',
+        ])).toThrowError('workers * worker-concurrency must not exceed 100.');
     });
 });

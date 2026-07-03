@@ -27,7 +27,7 @@ const resolveCommentVisibilityComplete = (result: EngagementScrapeResult): boole
 
 const toStatus = (result: ScrapeResult): 'SUCCEEDED' | 'PARTIAL' => {
     if (result.status) return result.status;
-    if (result.kind === 'profile') {
+    if (result.kind === 'profile' || result.kind === 'screenshot') {
         return result.screenshots.length > 0 ? 'SUCCEEDED' : 'PARTIAL';
     }
 
@@ -65,6 +65,63 @@ export const buildSuccessOutput = (
             ...baseOutput,
             profile: result.profile,
             artifacts: result.screenshots.length > 0 ? { screenshots: result.screenshots } : undefined,
+        };
+    }
+
+    if (result.kind === 'screenshot') {
+        const hasStructuredEngagement = (result.reactions?.length ?? 0) > 0
+            || (result.comments?.length ?? 0) > 0
+            || (result.reactionCount ?? 0) > 0
+            || (result.commentCount ?? 0) > 0;
+
+        if (hasStructuredEngagement) {
+            return {
+                ...baseOutput,
+                completeness: {
+                    allCommentsFilterApplied: result.commentsComplete ?? (result.comments?.length ?? 0) > 0,
+                    commentsExtracted: result.commentsComplete ?? (result.comments?.length ?? 0) > 0,
+                    postReactionsExtracted: result.postReactionsComplete ?? (result.reactions?.length ?? 0) > 0,
+                },
+                post: {
+                    url: result.finalUrl,
+                    content: result.postContent ?? result.captionPreview,
+                    reactionSummary: { total: result.reactionCount ?? 0 },
+                    reactions: result.reactions ?? [],
+                },
+                comments: result.comments ?? [],
+                artifacts: {
+                    ...(result.screenshots.length > 0 ? { screenshots: result.screenshots } : {}),
+                    ...(result.engagementJsonPath ? { engagementJson: { localPath: result.engagementJsonPath } } : {}),
+                    ...(result.sessionVideo ? { sessionVideo: result.sessionVideo } : {}),
+                },
+            };
+        }
+
+        const engagementNote = result.engagementLabels
+            ? [
+                result.engagementLabels.likes ? `likes: ${result.engagementLabels.likes}` : null,
+                result.engagementLabels.comments ? `comments: ${result.engagementLabels.comments}` : null,
+                result.engagementLabels.reposts ? `reposts: ${result.engagementLabels.reposts}` : null,
+            ].filter(Boolean).join(', ')
+            : undefined;
+        const content = [result.captionPreview, engagementNote ? `[ui] ${engagementNote}` : null]
+            .filter(Boolean)
+            .join('\n');
+
+        return {
+            ...baseOutput,
+            post: {
+                url: result.finalUrl,
+                content: content || undefined,
+                reactionSummary: { total: 0 },
+                reactions: [],
+            },
+            comments: [],
+            artifacts: {
+                ...(result.screenshots.length > 0 ? { screenshots: result.screenshots } : {}),
+                ...(result.engagementJsonPath ? { engagementJson: { localPath: result.engagementJsonPath } } : {}),
+                ...(result.sessionVideo ? { sessionVideo: result.sessionVideo } : {}),
+            },
         };
     }
 
@@ -135,6 +192,7 @@ export const buildRunOutput = (
     requestedUrls: number,
     video: VideoArtifact,
     results: ScrapeItemOutput[],
+    workerInfo?: { workers: number; workerConcurrency: number },
 ): ScrapeRunOutput => {
     const summary = results.reduce((acc, result) => {
         if (result.scrape.status === 'FAILED') acc.failed += 1;
@@ -154,6 +212,7 @@ export const buildRunOutput = (
             concurrency,
             requestedUrls,
             browserSession: browserSessionMode,
+            ...(workerInfo ? { workers: workerInfo.workers, workerConcurrency: workerInfo.workerConcurrency } : {}),
         },
         summary,
         artifacts: { video },

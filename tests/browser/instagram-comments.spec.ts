@@ -29,7 +29,7 @@ test.describe('extractInstagramComments', () => {
             </main>
         `);
 
-        const result = await extractInstagramComments(page, { maxPasses: 3, settleMs: 10, clickDelayMs: 10 });
+        const result = await extractInstagramComments(page, { maxPasses: 4, settleMs: 10, clickDelayMs: 10 });
 
         expect(result).toEqual({
             extracted: true,
@@ -87,5 +87,54 @@ test.describe('extractInstagramComments', () => {
 
         expect(result.extracted).toBe(false);
         expect(result.comments).toHaveLength(1);
+    });
+
+    test('expands View replies (N) threads and extracts nested comments', async ({ page }) => {
+        await page.setContent(`
+            <main>
+                <ul class="_a9ym">
+                    <li>
+                        <a href="/naomyrodriguez.lopez/">naomyrodriguez.lopez</a>
+                        <a href="/p/post-id/c/parent-1/"><time datetime="2026-05-26T04:17:35.000Z">6h</time></a>
+                        <span>EW</span>
+                        <button>Like</button>
+                        <button>Reply</button>
+                        <ul class="_a9yo">
+                            <li>
+                                <button type="button"><span>View replies (2)</span></button>
+                            </li>
+                            <li id="replies" hidden>
+                                <a href="/reply-user/">reply-user</a>
+                                <a href="/p/post-id/c/reply-1/"><time datetime="2026-05-26T05:00:00.000Z">5h</time></a>
+                                <span>Nested reply text</span>
+                                <button>Like</button>
+                                <button>Reply</button>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </main>
+            <script>
+                document.querySelector('button span').closest('button').addEventListener('click', () => {
+                    document.getElementById('replies').hidden = false;
+                });
+            </script>
+        `);
+
+        const result = await extractInstagramComments(page, { maxPasses: 4, settleMs: 50, clickDelayMs: 50 });
+
+        expect(result.comments).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                id: 'parent-1',
+                user: 'naomyrodriguez.lopez',
+                content: 'EW',
+            }),
+            expect.objectContaining({
+                id: 'reply-1',
+                user: 'reply-user',
+                content: 'Nested reply text',
+                parentId: 'parent-1',
+            }),
+        ]));
     });
 });

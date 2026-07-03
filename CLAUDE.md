@@ -15,7 +15,10 @@ This repository is a local CLI scraper.
 
 - `facebook` + `post-engagement`
 - `facebook` + `comment-reactions`
+- `facebook` + `post-screenshot`
 - `instagram` + `post-engagement`
+- `instagram` + `profile-scraper`
+- `instagram` + `post-screenshot`
 
 ## Key directories
 

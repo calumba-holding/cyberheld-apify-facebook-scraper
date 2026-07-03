@@ -16,6 +16,10 @@ export interface RunScrapeOptions {
     screenVideo?: boolean;
     download?: boolean;
     regenerateScript?: boolean;
+    fullPageScreenshot?: boolean;
+    expandComments?: boolean;
+    /** Watch mode: skip post-reaction extraction (much faster polls). */
+    commentsOnly?: boolean;
 }
 
 export interface ProfileLoginOptions {
@@ -67,6 +71,12 @@ export interface ScrapedComment {
     timestamp: string;
     timestampLabel?: string;
     id: string;
+    /** Parent comment id when this row is a nested reply under "View replies". */
+    parentId?: string;
+    /** True when the DOM row lives under a reply thread container. */
+    isReply?: boolean;
+    /** Visible like count on the comment row, e.g. "37" from "37 likes". */
+    likeCount?: string;
     reactions?: CommentReactionDetails;
 }
 
@@ -134,7 +144,30 @@ export interface ProfileScrapeResult extends BaseScrapeResult {
     screenshots: ScreenshotArtifact[];
 }
 
-export type ScrapeResult = EngagementScrapeResult | ProfileScrapeResult;
+export interface ScreenshotEngagementLabels {
+    likes?: string;
+    comments?: string;
+    reposts?: string;
+}
+
+export interface ScreenshotScrapeResult extends BaseScrapeResult {
+    kind: 'screenshot';
+    screenshots: ScreenshotArtifact[];
+    captionPreview?: string;
+    engagementLabels?: ScreenshotEngagementLabels;
+    commentsExpanded?: boolean;
+    reactionCount?: number;
+    commentCount?: number;
+    postContent?: string;
+    reactions?: ReactionUser[];
+    comments?: ScrapedComment[];
+    commentsComplete?: boolean;
+    postReactionsComplete?: boolean;
+    engagementJsonPath?: string;
+    sessionVideo?: LocalFileArtifact;
+}
+
+export type ScrapeResult = EngagementScrapeResult | ProfileScrapeResult | ScreenshotScrapeResult;
 
 export interface TargetPlugin<TResult extends BaseScrapeResult = ScrapeResult> {
     target: SupportedTarget;
