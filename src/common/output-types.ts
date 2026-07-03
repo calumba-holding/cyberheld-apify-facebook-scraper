@@ -25,6 +25,7 @@ export type ScrapeItemOutput = {
         runtime: 'cli';
         browser: ScrapeBrowser;
         error?: string;
+        attempts?: number;
     };
     completeness?: {
         allCommentsFilterApplied: boolean;

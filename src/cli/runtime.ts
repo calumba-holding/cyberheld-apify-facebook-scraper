@@ -14,6 +14,7 @@ import type { ParsedCli, ProfileStatusOutput, RunCliOptions } from './types.js';
 import { resolveRunOutputFile } from './output-paths.js';
 import { finalizeVideoArtifact, prepareRawVideoDir } from './video-artifacts.js';
 import { runWorkerPool } from './worker-pool.js';
+import { computeBackoffMs, sleep } from './retry.js';
 const ensureParentDirectory = async (filePath: string): Promise<void> => {
     await mkdir(dirname(filePath), { recursive: true });
 };
@@ -59,22 +60,45 @@ export const runScrapeCommand = async (options: RunCliOptions): Promise<ScrapeRu
 
     try {
         results = await mapLimit(options.targetUrls, options.concurrency, async (targetUrl, itemIndex): Promise<ScrapeItemOutput> => {
-            try {
-                log.info(`Scraping ${targetUrl}`);
-                const scrapeResult = await plugin.runScrape(context, options.scraper, targetUrl, {
-                    ...options,
-                    runId,
-                    itemIndex,
-                });
-                return buildSuccessOutput(scrapeResult, runId, options.browserSessionMode);
-            } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                const blockedPage = error instanceof Error && 'blockedPage' in error
-                    ? (error as Error & { blockedPage?: Parameters<typeof buildFailedOutput>[4] }).blockedPage
-                    : undefined;
-                log.error(`${targetUrl}: ${message}`);
-                return buildFailedOutput(targetUrl, runId, message, options.browserSessionMode, blockedPage);
+            if (options.itemDelayMs > 0) await sleep(options.itemDelayMs);
+            const maxAttempts = options.maxRetries + 1;
+
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                const attemptSuffix = attempt > 1 ? ` (attempt ${String(attempt)}/${String(maxAttempts)})` : '';
+                try {
+                    log.info(`Scraping ${targetUrl}${attemptSuffix}`);
+                    const scrapeResult = await plugin.runScrape(context, options.scraper, targetUrl, {
+                        ...options,
+                        runId,
+                        itemIndex,
+                    });
+                    const zeroScreenshots = scrapeResult.kind === 'screenshot' && scrapeResult.screenshots.length === 0;
+                    if (zeroScreenshots && attempt < maxAttempts) {
+                        log.warning(`${targetUrl}: zero screenshots captured, retrying...`);
+                        await sleep(computeBackoffMs(attempt));
+                        continue;
+                    }
+                    const output = buildSuccessOutput(scrapeResult, runId, options.browserSessionMode);
+                    if (attempt === 1) return output;
+                    return { ...output, scrape: { ...output.scrape, attempts: attempt } };
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    const blockedPage = error instanceof Error && 'blockedPage' in error
+                        ? (error as Error & { blockedPage?: Parameters<typeof buildFailedOutput>[4] }).blockedPage
+                        : undefined;
+                    if (blockedPage || attempt >= maxAttempts) {
+                        log.error(`${targetUrl}: ${message}`);
+                        const failedOutput = buildFailedOutput(targetUrl, runId, message, options.browserSessionMode, blockedPage);
+                        if (attempt === 1) return failedOutput;
+                        return { ...failedOutput, scrape: { ...failedOutput.scrape, attempts: attempt } };
+                    }
+                    log.warning(`${targetUrl}: attempt ${String(attempt)} failed (${message}), retrying...`);
+                    await sleep(computeBackoffMs(attempt));
+                }
             }
+
+            // Unreachable: the loop above always returns on its final attempt.
+            return buildFailedOutput(targetUrl, runId, 'exhausted retry attempts', options.browserSessionMode);
         });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

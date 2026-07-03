@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Added a worker-pool mode (`--workers`, `--worker-concurrency`, `--worker-start-delay-ms`) that forks separate Chrome processes to scale batch scrapes beyond one process's tab limit, with per-worker profile isolation and merged JSON output that preserves input URL order.
+- Added per-item retries with exponential backoff (`--max-retries`, default 2) for transient failures and zero-screenshot results, plus `--item-delay-ms` for request pacing; login-wall/blocked-page failures still fail fast. Raised the single-process `--concurrency` cap from 16 to 32.
+- Added `docs/operations/parallel-evidence.md` with RAM guidelines and recommended worker counts for large batches.
 - Added Facebook watch/share video support for `post-engagement`, including redirect resolution to the final watch URL, original source-video downloads by default, and a `--no-download` opt-out.
 - Added an Instagram `profile-scraper` with persistent-profile login plus visible profile metadata extraction and screenshot artifacts. #15
 - Changed browser-based scrapers to record Playwright video by default; pass `--no-screen-video` to disable it per run. #14

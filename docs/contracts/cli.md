@@ -37,7 +37,7 @@ node dist/main.js [scrape] profile path --target <target>
 
 ### Optional
 
-- `--concurrency <n>` (tabs per worker process; 1-16)
+- `--concurrency <n>` (tabs per worker process; 1-32)
 - `--urls-file <path>` (newline-delimited target URLs; `#`-prefixed lines and blanks are skipped)
 - `--public-session` (Facebook only; use a persistent non-login Facebook profile for public scraping)
 - `--guest-session` (Facebook only; use a temporary Chrome session without the saved target profile)
@@ -53,9 +53,24 @@ node dist/main.js [scrape] profile path --target <target>
 - `--workers <n>` (parallel Chrome worker processes; default 1, max 20)
 - `--worker-concurrency <n>` (tabs per worker when `--workers` > 1; default 4, max 16)
 - `--worker-start-delay-ms <ms>` (stagger delay between worker starts; default 2000)
+- `--max-retries <n>` (per-item retry attempts; default 2, max 5)
+- `--item-delay-ms <ms>` (delay before scraping each item, per tab; default 0)
 - `--verbose`
 - `-h`, `--help`
 - `--version`
+
+## Retry policy
+
+Each item retries up to `--max-retries` times (default 2, so 3 attempts total) with exponential backoff (1s, 2s,
+4s, ... capped at 30s) when:
+
+- the scraper throws (navigation timeout, transient network error, etc.) and the error is not flagged as a
+  login-wall/blocked-page failure (those fail fast on the first attempt, matching existing block-diagnostics behavior)
+- a `post-screenshot` result completes with zero screenshots captured
+
+`--item-delay-ms` adds a fixed delay before each item starts (per tab), independent of retries, to pace requests
+against the target platform. When an item required more than one attempt, its output includes `scrape.attempts`
+(the number of attempts taken); this field is omitted when an item succeeds or fails on the first attempt.
 
 ## Worker pool (`--workers` > 1)
 

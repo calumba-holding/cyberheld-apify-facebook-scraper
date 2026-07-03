@@ -7,6 +7,7 @@ import { log } from '../common/logger.js';
 import { buildFailedOutput, buildRunOutput } from '../common/output-item.js';
 import type { ScrapeItemOutput, ScrapeRunOutput, VideoArtifact } from '../common/output-types.js';
 import { getTargetPlugin } from '../registry.js';
+import { sleep } from './retry.js';
 import type { RunCliOptions } from './types.js';
 
 const childModulePath = join(dirname(fileURLToPath(import.meta.url)), 'worker-pool-child.js');
@@ -28,8 +29,6 @@ export const chunkUrlsForWorkers = (urls: string[], workers: number): string[][]
     }
     return chunks;
 };
-
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 type ChildResponse = { ok: true; output: ScrapeRunOutput } | { ok: false; error: string };
 

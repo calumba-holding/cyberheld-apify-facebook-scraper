@@ -254,7 +254,7 @@ describe('parseCliArgs', () => {
             'https://www.facebook.com/example/posts/123',
             '--concurrency',
             '0',
-        ])).toThrowError('concurrency must be an integer between 1 and 16.');
+        ])).toThrowError('concurrency must be an integer between 1 and 32.');
     });
 
     it('throws an error when --public-session is used for a non-facebook target', () => {
@@ -315,7 +315,43 @@ describe('parseCliArgs', () => {
             expect(parsed.options.workers).toBe(1);
             expect(parsed.options.workerConcurrency).toBe(4);
             expect(parsed.options.workerStartDelayMs).toBe(2000);
+            expect(parsed.options.maxRetries).toBe(2);
+            expect(parsed.options.itemDelayMs).toBe(0);
         }
+    });
+
+    it('parses --max-retries and --item-delay-ms', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+            '--max-retries',
+            '0',
+            '--item-delay-ms',
+            '1500',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.maxRetries).toBe(0);
+            expect(parsed.options.itemDelayMs).toBe(1500);
+        }
+    });
+
+    it('throws an error when max-retries is outside the supported range', () => {
+        expect(() => parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'post-engagement',
+            '--target-url',
+            'https://www.facebook.com/example/posts/123',
+            '--max-retries',
+            '6',
+        ])).toThrowError('maxRetries must be an integer between 0 and 5.');
     });
 
     it('parses --workers, --worker-concurrency and --worker-start-delay-ms', () => {

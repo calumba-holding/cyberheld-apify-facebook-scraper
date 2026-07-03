@@ -27,7 +27,7 @@ Required for scraping:
   --target-url <url>         Target resource URL (repeatable)
 
 Options:
-  --concurrency <n>          Number of tabs to scrape in parallel (default: 1)
+  --concurrency <n>          Number of tabs to scrape in parallel (default: 1, max: 32)
   --public-session          Use a persistent non-login Facebook profile for public scraping
   --guest-session           Use a temporary Chrome session without the saved target profile
   --screen-video             Force-enable Playwright browser video recording
@@ -47,6 +47,8 @@ Options:
   --worker-concurrency <n>   Tabs per worker process when --workers > 1 (default: 4)
   --worker-start-delay-ms <ms>
                              Stagger delay between worker starts (default: 2000)
+  --max-retries <n>          Per-item retry attempts on transient failure or zero screenshots (default: 2, max: 5)
+  --item-delay-ms <ms>       Delay before scraping each item, per tab (default: 0)
   --verbose                  Print debug logs to stderr
   -h, --help                 Show help
   --version                  Show version
@@ -64,6 +66,8 @@ Notes:
   - --workers > 1 forks separate Chrome processes; workers * worker-concurrency must not exceed 100
   - for persistent-profile and --public-session runs, each worker N uses <profile-root-dir>/worker-N and must be
     logged in ahead of time via: scrape profile login --target <target> --profile-root-dir <profile-root-dir>/worker-N
+  - failed items retry up to --max-retries times with exponential backoff (1s, 2s, 4s... capped at 30s), except
+    login-wall/blocked-page failures, which fail fast without retrying
 
 Examples:
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..."
@@ -102,6 +106,8 @@ Environment:
   SCRAPE_WORKERS
   SCRAPE_WORKER_CONCURRENCY
   SCRAPE_WORKER_START_DELAY_MS
+  SCRAPE_MAX_RETRIES
+  SCRAPE_ITEM_DELAY_MS
   SCRAPE_ARTIFACT_ROOT_DIR
   SCRAPE_LLM_API_KEY
   SCRAPE_LLM_MODEL

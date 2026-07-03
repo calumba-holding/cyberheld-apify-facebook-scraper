@@ -1,50 +1,8 @@
-import { readFileSync } from 'node:fs';
-
 import { defaultArtifactRootDir, defaultChromeExecutable, defaultProfileRootDir, helpText } from './help.js';
-import { getTargetPlugin, isSupportedTarget, SUPPORTED_TARGETS } from '../registry.js';
+import { getTargetPlugin } from '../registry.js';
+import { ensureUrl, loadUrlsFromFile, parseBooleanEnv, parseInteger, parseTargetFlag, takeValue } from './parse-helpers.js';
 import type { BrowserSessionMode, SupportedTarget } from '../common/types.js';
 import type { ParsedCli, ProfileLoginCliOptions, ProfilePathCliOptions, RunCliOptions, WatchCliOptions } from './types.js';
-
-const parseBooleanEnv = (value: string | undefined, fallback: boolean): boolean => {
-    if (!value) return fallback;
-    const normalized = value.trim().toLowerCase();
-    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
-    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
-    return fallback;
-};
-
-const parseInteger = (value: string, name: string, min: number, max: number): number => {
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
-        throw new Error(`${name} must be an integer between ${String(min)} and ${String(max)}.`);
-    }
-    return parsed;
-};
-
-const takeValue = (args: string[], index: number, name: string): string => {
-    const value = args[index + 1];
-    if (!value || value.startsWith('-')) throw new Error(`${name} requires a value.`);
-    return value;
-};
-
-const ensureUrl = (value: string): string => {
-    if (!URL.canParse(value)) throw new Error('--target-url must be a valid URL.');
-    return new URL(value).toString();
-};
-
-const loadUrlsFromFile = (filePath: string): string[] => (
-    readFileSync(filePath, 'utf8')
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0 && !line.startsWith('#'))
-        .map(ensureUrl)
-);
-
-const parseTargetFlag = (args: string[], index: number): SupportedTarget => {
-    const value = takeValue(args, index, '--target');
-    if (!isSupportedTarget(value)) throw new Error(`--target must be one of: ${SUPPORTED_TARGETS.join(', ')}`);
-    return value;
-};
 
 const parseProfileArgs = (argv: string[]): ProfileLoginCliOptions | ProfilePathCliOptions => {
     const subcommand = argv[1];
@@ -100,7 +58,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     let profileRootDir = process.env.SCRAPE_PROFILE_ROOT_DIR ?? defaultProfileRootDir;
     let waitAfterNavigationMs = parseInteger(process.env.SCRAPE_WAIT_AFTER_NAVIGATION_MS ?? '5000', 'waitAfterNavigationMs', 0, 120000);
     let requestTimeoutSecs = parseInteger(process.env.SCRAPE_REQUEST_TIMEOUT_SECS ?? '240', 'requestTimeoutSecs', 30, 3600);
-    let concurrency = parseInteger(process.env.SCRAPE_CONCURRENCY ?? '1', 'concurrency', 1, 16);
+    let concurrency = parseInteger(process.env.SCRAPE_CONCURRENCY ?? '1', 'concurrency', 1, 32);
     const artifactRootDir = process.env.SCRAPE_ARTIFACT_ROOT_DIR ?? defaultArtifactRootDir;
     let verbose = false;
     let regenerateScript = false;
@@ -109,6 +67,8 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     let workers = parseInteger(process.env.SCRAPE_WORKERS ?? '1', 'workers', 1, 20);
     let workerConcurrency = parseInteger(process.env.SCRAPE_WORKER_CONCURRENCY ?? '4', 'workerConcurrency', 1, 16);
     let workerStartDelayMs = parseInteger(process.env.SCRAPE_WORKER_START_DELAY_MS ?? '2000', 'workerStartDelayMs', 0, 60000);
+    let maxRetries = parseInteger(process.env.SCRAPE_MAX_RETRIES ?? '2', 'maxRetries', 0, 5);
+    let itemDelayMs = parseInteger(process.env.SCRAPE_ITEM_DELAY_MS ?? '0', 'itemDelayMs', 0, 60000);
 
     for (let index = 0; index < argv.length; index++) {
         const arg = argv[index];
@@ -130,7 +90,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
                 index += 1;
                 break;
             case '--concurrency':
-                concurrency = parseInteger(takeValue(argv, index, '--concurrency'), 'concurrency', 1, 16);
+                concurrency = parseInteger(takeValue(argv, index, '--concurrency'), 'concurrency', 1, 32);
                 index += 1;
                 break;
             case '--public-session':
@@ -192,6 +152,14 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
                 workerStartDelayMs = parseInteger(takeValue(argv, index, '--worker-start-delay-ms'), 'workerStartDelayMs', 0, 60000);
                 index += 1;
                 break;
+            case '--max-retries':
+                maxRetries = parseInteger(takeValue(argv, index, '--max-retries'), 'maxRetries', 0, 5);
+                index += 1;
+                break;
+            case '--item-delay-ms':
+                itemDelayMs = parseInteger(takeValue(argv, index, '--item-delay-ms'), 'itemDelayMs', 0, 60000);
+                index += 1;
+                break;
             default:
                 throw new Error(`Unknown argument: ${arg}`);
         }
@@ -233,6 +201,8 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
         workers,
         workerConcurrency,
         workerStartDelayMs,
+        maxRetries,
+        itemDelayMs,
     };
 };
 

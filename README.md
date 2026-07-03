@@ -232,7 +232,12 @@ node dist/main.js profile login --target instagram --profile-root-dir ~/.scrape/
 # ...one per worker index used
 ```
 
-See [docs/contracts/cli.md](docs/contracts/cli.md#worker-pool---workers--1) for the full contract.
+Failed items automatically retry (`--max-retries`, default 2) with exponential backoff, except login-wall/blocked-page
+failures, which fail fast. Use `--item-delay-ms` to pace requests within a worker.
+
+See [docs/contracts/cli.md](docs/contracts/cli.md#worker-pool---workers--1) for the full contract and
+[docs/operations/parallel-evidence.md](docs/operations/parallel-evidence.md) for RAM guidelines and recommended
+worker counts.
 
 ## Save JSON while keeping the default browser video
 

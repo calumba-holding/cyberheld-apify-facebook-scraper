@@ -46,6 +46,7 @@ All scrape runs emit one JSON object to stdout.
     runtime: 'cli';
     browser: 'persistent-chrome-profile' | 'guest-chrome-session';
     error?: string;
+    attempts?: number;  // present only when the item needed more than one attempt (see retry policy)
   };
   completeness?: {
     allCommentsFilterApplied: boolean;
@@ -176,6 +177,13 @@ They do not need to populate:
 - `post`
 - `comments`
 - `completeness`
+
+## Retry rule
+
+`scrape.attempts` is populated only when an item took more than one attempt (see `docs/contracts/cli.md` for the
+retry policy). A `SUCCEEDED` or `PARTIAL` item with `attempts: 2` means the first attempt produced zero screenshots
+(post-screenshot) or threw a non-blocked-page error and a later attempt produced the final result. A `FAILED` item
+with `attempts` set means every attempt failed; `scrape.error` reports the last attempt's error.
 
 ## Worker pool rule
 

@@ -44,6 +44,10 @@ If you are adding or changing a target or scraper, read these files first:
 - `docs/scrapers/instagram-post-engagement.md` — Instagram post engagement scraper behavior and contract
 - `docs/scrapers/instagram-profile-scraper.md` — Instagram profile scraper behavior and contract
 
+### Operations docs
+
+- `docs/operations/parallel-evidence.md` — worker-pool RAM guidelines, recommended worker counts, and per-worker login setup for large batches
+
 ### Automation docs
 
 - `docs/automation/docs-sync.md` — project-local documentation sync skill and usage rules

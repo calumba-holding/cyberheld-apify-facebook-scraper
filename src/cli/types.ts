@@ -22,6 +22,8 @@ export interface RunCliOptions {
     workers: number;
     workerConcurrency: number;
     workerStartDelayMs: number;
+    maxRetries: number;
+    itemDelayMs: number;
 }
 
 export interface ProfileLoginCliOptions {
