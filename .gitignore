@@ -6,6 +6,13 @@
 .zed
 dist
 node_modules
+
+# Python (control plane — platform/*)
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.egg-info/
 apify_storage
 storage
 runs

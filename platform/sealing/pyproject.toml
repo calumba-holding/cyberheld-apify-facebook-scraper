@@ -1,0 +1,15 @@
+[project]
+name = "sealing"
+version = "0.1.0"
+description = "Evidence-capture Sealing Service — the only route to storage (#34)"
+requires-python = ">=3.11"
+dependencies = [
+    "cryptography>=42",
+    "SQLAlchemy>=2.0,<2.1",
+    "psycopg[binary]>=3.2",
+]
+
+[tool.pytest.ini_options]
+# sealing depends on the metadata_db package (sibling service).
+pythonpath = ["src", "../metadata-db/src"]
+testpaths = ["tests"]
