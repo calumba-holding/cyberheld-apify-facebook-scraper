@@ -165,9 +165,12 @@ not the boundary — which is how the whole codebase moves inside the architectu
   - **Connector Workers (#39) — implemented** in [`platform/connectors/`](../platform/connectors/). Pluggable
     connector framework (`email-verify`, `domain`) behind `/enrich/*`; external access injected (offline-
     testable); results sealed into the evidence record via `seal_connector_result`. 8 tests pass.
-  - Device Workers (#44) + Processing Workers (#45) remain — both need external tooling (Android/adb,
-    yt-dlp/ffmpeg/Whisper) that can't fully run in this dev env, so they'll be built against the same bundle
-    contract with the external steps behind interfaces.
+  - **Processing Workers (#45) — implemented** in [`platform/processing/`](../platform/processing/). Pipeline
+    `download → ffmpeg (probe + frames) → OCR + transcript`; ffmpeg/ffprobe/tesseract exercised for real,
+    Whisper behind a `Transcriber` interface (NullTranscriber default, model not shipped). Derived artifacts
+    (transcript/OCR/frames) sealed into DB + WORM. 6 tests pass.
+  - Device Workers (#44) remain — needs Android/adb/UiAutomator (hardware), so it'll be built against the same
+    bundle contract with the device steps behind an interface.
 - **Phase 5 — Outputs & intelligence.** Evidence Package builder, LLM Triage, Notify.
 
 Issues #29–32 are the whole of Phase 0 and the bottom-left corner of the board; the phases above them are net-new.
