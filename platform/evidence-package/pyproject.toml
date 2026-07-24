@@ -1,0 +1,14 @@
+[project]
+name = "evidence-package"
+version = "0.1.0"
+description = "Evidence-capture Evidence Package builder — self-contained, offline-verifiable (#40)"
+requires-python = ">=3.11"
+dependencies = [
+    "SQLAlchemy>=2.0,<2.1",
+    "psycopg[binary]>=3.2",
+    "cryptography>=42",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../metadata-db/src", "../sealing/src"]
+testpaths = ["tests"]
