@@ -142,6 +142,10 @@ Browser-Workers pool. As later phases land, only the *caller* of that seam chang
 not the boundary — which is how the whole codebase moves inside the architecture incrementally.
 - **Phase 2 — The one door + durability.** Ingest API (FastAPI, 202 + job_id) + Temporal (workflow per job,
   step journal) + Capability Router (per-pool queues). Make the Node capture workers callable behind the contract.
+  - **Ingest API (#36) — implemented** in [`platform/ingest-api/`](../platform/ingest-api/). FastAPI, API-key
+    auth (fail-closed), capture routes (`/fb/*`, `/ig/*`, `/tiktok/*`) + enrich (`/enrich/*`) + `GET /jobs/{id}`.
+    Opens a case + job via the metadata `Repository` and returns `202 + job_id` without blocking; dispatch to
+    Temporal (#37) plugs into `routes.py::_accept` without changing the contract. 9 tests pass.
 - **Phase 3 — Account & Session Pool.** Health-scoring + quarantine over the existing per-worker profiles.
 - **Phase 4 — Expand capture surface.** Device Workers (Android), Processing Workers (yt-dlp/ffmpeg/Whisper/OCR),
   Connector Workers.
