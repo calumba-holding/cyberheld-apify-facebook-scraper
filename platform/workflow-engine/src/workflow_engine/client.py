@@ -10,7 +10,8 @@ import os
 
 from temporalio.client import Client
 
-TASK_QUEUE = os.environ.get("EVIDENCE_TASK_QUEUE", "capture")
+from capability_router import task_queue_for
+
 TARGET = os.environ.get("TEMPORAL_TARGET", "localhost:7233")
 
 
@@ -18,12 +19,17 @@ async def connect(target: str | None = None) -> Client:
     return await Client.connect(target or TARGET)
 
 
-async def start_capture_workflow(client: Client, job: dict, task_queue: str = TASK_QUEUE):
-    from .workflows import CaptureWorkflow
-
+async def start_capture_workflow(client: Client, job: dict, task_queue: str | None = None):
+    """Enqueue a job. The Capability Router (#38) picks the pool task queue from the
+    job_type unless one is given explicitly."""
+    tq = task_queue or task_queue_for(job["job_type"])
     return await client.start_workflow(
         CaptureWorkflow.run,
         job,
         id=f"capture-{job['job_id']}",
-        task_queue=task_queue,
+        task_queue=tq,
     )
+
+
+# Imported lazily below to avoid pulling workflow defs at module import in some paths.
+from .workflows import CaptureWorkflow  # noqa: E402

@@ -151,6 +151,10 @@ not the boundary — which is how the whole codebase moves inside the architectu
     log before/after, and the terminal step routes artifacts through the real Sealing service. Verified
     end-to-end against an ephemeral local Temporal server + real Postgres (custody log journaled in order, job
     sealed). `client.start_capture_workflow` is the hook the Ingest API calls to enqueue a job.
+  - **Capability Router (#38) — implemented** in [`platform/capability-router/`](../platform/capability-router/).
+    Routes each job to a worker pool (browser/device/watch/processing/connector), each an independent Temporal
+    task queue with its own concurrency limit; dispatch (`start_capture_workflow`) and `worker.py <pool>` use it.
+    A test proves the guarantee: a saturated Processing pool does not starve Browser. **Phase 2 complete.**
 - **Phase 3 — Account & Session Pool.** Health-scoring + quarantine over the existing per-worker profiles.
 - **Phase 4 — Expand capture surface.** Device Workers (Android), Processing Workers (yt-dlp/ffmpeg/Whisper/OCR),
   Connector Workers.
