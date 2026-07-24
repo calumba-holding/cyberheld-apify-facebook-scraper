@@ -180,6 +180,11 @@ not the boundary — which is how the whole codebase moves inside the architectu
     `0..1` for how plausibly it crosses the legal threshold and writes `triage_flags` (derived metadata — it
     never touches sealed artifacts). Real classifier = **claude-opus-4-8** via the Anthropic SDK (structured
     output: score + rationale, prioritization-only, human-in-the-loop); `FakeClassifier` keeps tests offline.
-    4 tests pass. Remaining P5: #42 Notify.
+    4 tests pass.
+  - **Notify (#42) — implemented** in [`platform/notify/`](../platform/notify/). Webhook / email / MCP-callback
+    delivery on job completion ("job done, N captures sealed") with at-least-once retry; writes a `notifications`
+    audit row per channel and **never raises** (a failure can't block or corrupt the sealed record). Pairs with
+    the `GET /jobs/{id}` pull side the Ingest API already serves. 5 tests pass.
 
-Issues #29–32 are the whole of Phase 0 and the bottom-left corner of the board; the phases above them are net-new.
+**Board status: every component is built** except Device Workers (#44, needs Android hardware). Issues #29–32
+are the whole of Phase 0 and the bottom-left corner of the board; the phases above them are net-new.
