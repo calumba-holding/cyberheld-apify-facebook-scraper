@@ -23,7 +23,8 @@ If you are adding or changing a target or scraper, read these files first:
 
 ### Core architecture
 
-- `docs/architecture.md` — module boundaries, target layout, and scraper lifecycle
+- `docs/architecture.md` — module boundaries, target layout, and scraper lifecycle (current CLI)
+- `docs/evidence-capture-architecture.md` — target platform this repo is evolving toward (transcribed from `evidence-capture-architecture.tldr`), with build plan
 
 ### Contracts
 
