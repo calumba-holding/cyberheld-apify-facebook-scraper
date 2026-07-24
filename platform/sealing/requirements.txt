@@ -1,0 +1,5 @@
+cryptography>=42
+SQLAlchemy>=2.0,<2.1
+psycopg[binary]>=3.2
+pytest>=8.0
+# metadata_db is a sibling package; add ../metadata-db/src to PYTHONPATH (see pyproject).

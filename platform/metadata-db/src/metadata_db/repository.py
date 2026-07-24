@@ -79,6 +79,12 @@ class Repository:
         self.s.refresh(step)  # load the DB-side timestamp, not the func expression
         return step
 
+    def next_step_index(self, job_id: uuid.UUID) -> int:
+        current_max = self.s.execute(
+            select(func.max(JobStep.step_index)).where(JobStep.job_id == job_id)
+        ).scalar()
+        return (current_max or 0) + 1
+
     def custody_log(self, job_id: uuid.UUID) -> Sequence[JobStep]:
         return (
             self.s.execute(
@@ -146,6 +152,14 @@ class Repository:
             mime_type=mime_type,
         )
         self.s.add(asset)
+        self.s.flush()
+        return asset
+
+    def mark_asset_sealed(self, media_asset_id: uuid.UUID) -> MediaAsset:
+        asset = self.s.get(MediaAsset, media_asset_id)
+        if asset is None:
+            raise LookupError(f"media_asset {media_asset_id} not found")
+        asset.sealed_at = func.now()
         self.s.flush()
         return asset
 

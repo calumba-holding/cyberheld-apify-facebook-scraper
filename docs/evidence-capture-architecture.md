@@ -121,6 +121,22 @@ Sequenced so the thing that makes it *evidence* comes before the thing that make
     the board's Python control plane. SQL migrations are the authoritative schema; the ORM mirrors them.
     Custody-log integrity (append-only `job_steps`, 1:1 hashes) is enforced by DB triggers/constraints and
     covered by tests against a real Postgres.
+  - **Sealing Service (#34) — implemented** in [`platform/sealing/`](../platform/sealing/).
+    SHA-256 → RFC 3161 timestamp → Ed25519-signed manifest + custody log; the only caller of the storage
+    backend. Packages verify **offline** with just the public key; tampering an artifact or the manifest
+    fails verification. ⚠️ The dev timestamper is **not** an eIDAS-qualified TSA — a real RFC 3161 TSA must
+    be plugged in before production (`Rfc3161HttpTimestamper`), gated with the WORM/GDPR launch (#35).
+  - **Object Store (#35) — pending** behind `sealing.storage.StorageBackend` (`LocalWormBackend` emulates
+    write-once for dev today; swap in MinIO/S3 Object Lock).
+
+### Encapsulating the existing codebase
+
+The Node/TS scraper is now a **capture worker** behind a single seam — the **capture bundle** (see
+[`docs/worker-contract.md`](./worker-contract.md)). A worker only produces artifacts for a job; the control
+plane does hashing/timestamping/custody/storage. `sealing/capture_import.py` maps the scraper's existing
+`out/` artifacts straight into a bundle with **no scraper changes**, turning the standalone CLI into the
+Browser-Workers pool. As later phases land, only the *caller* of that seam changes (Router → Temporal),
+not the boundary — which is how the whole codebase moves inside the architecture incrementally.
 - **Phase 2 — The one door + durability.** Ingest API (FastAPI, 202 + job_id) + Temporal (workflow per job,
   step journal) + Capability Router (per-pool queues). Make the Node capture workers callable behind the contract.
 - **Phase 3 — Account & Session Pool.** Health-scoring + quarantine over the existing per-worker profiles.
