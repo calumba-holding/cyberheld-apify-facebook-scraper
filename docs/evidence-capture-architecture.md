@@ -176,5 +176,10 @@ not the boundary — which is how the whole codebase moves inside the architectu
     `build_package` composes the Metadata DB + WORM + sealing into a self-contained zip (signed manifest with
     per-artifact SHA-256 + RFC 3161 token, custody log, artifact bytes). `verify_package_zip` verifies it
     **offline** — a test proves it still verifies after the DB and WORM store are deleted. 4 tests pass.
+  - **LLM Triage (#41) — implemented** in [`platform/triage/`](../platform/triage/). Scores captured content
+    `0..1` for how plausibly it crosses the legal threshold and writes `triage_flags` (derived metadata — it
+    never touches sealed artifacts). Real classifier = **claude-opus-4-8** via the Anthropic SDK (structured
+    output: score + rationale, prioritization-only, human-in-the-loop); `FakeClassifier` keeps tests offline.
+    4 tests pass. Remaining P5: #42 Notify.
 
 Issues #29–32 are the whole of Phase 0 and the bottom-left corner of the board; the phases above them are net-new.

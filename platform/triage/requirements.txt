@@ -1,0 +1,5 @@
+SQLAlchemy>=2.0,<2.1
+psycopg[binary]>=3.2
+anthropic>=0.40      # ClaudeClassifier — claude-opus-4-8 via the Anthropic SDK
+pydantic>=2
+pytest>=8.0

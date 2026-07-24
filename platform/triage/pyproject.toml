@@ -1,0 +1,15 @@
+[project]
+name = "triage"
+version = "0.1.0"
+description = "Evidence-capture LLM Triage — flag content crossing the legal threshold (#41)"
+requires-python = ">=3.11"
+dependencies = [
+    "SQLAlchemy>=2.0,<2.1",
+    "psycopg[binary]>=3.2",
+    "anthropic>=0.40",   # ClaudeClassifier (lazy-imported)
+    "pydantic>=2",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../metadata-db/src"]
+testpaths = ["tests"]
