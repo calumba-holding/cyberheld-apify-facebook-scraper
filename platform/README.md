@@ -12,7 +12,7 @@ architecture, one service at a time.
 |-----|-------|-------|--------|
 | `metadata-db/` | #33 | P1 | ✅ built — queryable index + custody log |
 | `sealing/` | #34 | P1 | ✅ built — only route to storage (SHA-256 + TSA + signed manifest) |
-| _(object store)_ | #35 | P1 | ⬜ WORM store behind `sealing.storage.StorageBackend` |
+| `object-store/` | #35 | P1 | ✅ built — S3/MinIO Object Lock WORM (`sealing.s3_storage.S3WormBackend`) |
 | _(ingest api)_ | #36 | P2 | ⬜ FastAPI one door |
 | _(temporal)_ | #37 | P2 | ⬜ durable workflow / custody journal |
 | _(router)_ | #38 | P2 | ⬜ per-pool queues |

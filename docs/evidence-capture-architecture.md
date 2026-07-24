@@ -126,8 +126,11 @@ Sequenced so the thing that makes it *evidence* comes before the thing that make
     backend. Packages verify **offline** with just the public key; tampering an artifact or the manifest
     fails verification. ⚠️ The dev timestamper is **not** an eIDAS-qualified TSA — a real RFC 3161 TSA must
     be plugged in before production (`Rfc3161HttpTimestamper`), gated with the WORM/GDPR launch (#35).
-  - **Object Store (#35) — pending** behind `sealing.storage.StorageBackend` (`LocalWormBackend` emulates
-    write-once for dev today; swap in MinIO/S3 Object Lock).
+  - **Object Store (#35) — implemented** as `sealing.s3_storage.S3WormBackend` (S3/MinIO **Object Lock**,
+    versioned bucket + COMPLIANCE DefaultRetention + legal hold; a locked version can't be deleted or
+    overwritten). `LocalWormBackend` remains for offline dev. Verified against real MinIO. Per-case
+    retention wiring from Sealing and the **GDPR retention policy** are the remaining launch decisions
+    (see [`platform/object-store/README.md`](../platform/object-store/README.md)).
 
 ### Encapsulating the existing codebase
 
