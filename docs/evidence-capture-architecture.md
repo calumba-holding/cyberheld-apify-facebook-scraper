@@ -3,6 +3,8 @@
 > Source of truth: `evidence-capture-architecture.tldr`. This document is the version-controlled
 > transcription of that board plus the build plan derived from it. `docs/architecture.md` still
 > describes the **current** local CLI; this describes where it is going.
+>
+> End-to-end testing: [`docs/testing-e2e.md`](./testing-e2e.md).
 
 ## One line
 
