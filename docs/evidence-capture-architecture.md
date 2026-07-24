@@ -116,6 +116,11 @@ Sequenced so the thing that makes it *evidence* comes before the thing that make
 - **Phase 1 — Custody spine (build first).** Metadata DB (Postgres) → Sealing Service (SHA-256 + RFC 3161
   TSA + signed manifest) → Object Store (WORM). Route existing capture output *through* sealing. Without
   this, nothing captured is evidence.
+  - **Metadata DB (#33) — implemented** in [`platform/metadata-db/`](../platform/metadata-db/).
+    Stack decision (recorded per issue #33): **Python 3.11+ · SQLAlchemy 2.0 · Postgres 17**, matching
+    the board's Python control plane. SQL migrations are the authoritative schema; the ORM mirrors them.
+    Custody-log integrity (append-only `job_steps`, 1:1 hashes) is enforced by DB triggers/constraints and
+    covered by tests against a real Postgres.
 - **Phase 2 — The one door + durability.** Ingest API (FastAPI, 202 + job_id) + Temporal (workflow per job,
   step journal) + Capability Router (per-pool queues). Make the Node capture workers callable behind the contract.
 - **Phase 3 — Account & Session Pool.** Health-scoring + quarantine over the existing per-worker profiles.
