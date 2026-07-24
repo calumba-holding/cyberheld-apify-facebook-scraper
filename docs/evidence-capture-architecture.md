@@ -162,6 +162,12 @@ not the boundary — which is how the whole codebase moves inside the architectu
     raised exhaustion. Verified against real Postgres incl. a two-session concurrent-lease test. 8 tests pass.
 - **Phase 4 — Expand capture surface.** Device Workers (Android), Processing Workers (yt-dlp/ffmpeg/Whisper/OCR),
   Connector Workers.
+  - **Connector Workers (#39) — implemented** in [`platform/connectors/`](../platform/connectors/). Pluggable
+    connector framework (`email-verify`, `domain`) behind `/enrich/*`; external access injected (offline-
+    testable); results sealed into the evidence record via `seal_connector_result`. 8 tests pass.
+  - Device Workers (#44) + Processing Workers (#45) remain — both need external tooling (Android/adb,
+    yt-dlp/ffmpeg/Whisper) that can't fully run in this dev env, so they'll be built against the same bundle
+    contract with the external steps behind interfaces.
 - **Phase 5 — Outputs & intelligence.** Evidence Package builder, LLM Triage, Notify.
 
 Issues #29–32 are the whole of Phase 0 and the bottom-left corner of the board; the phases above them are net-new.

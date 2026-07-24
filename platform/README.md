@@ -17,6 +17,7 @@ architecture, one service at a time.
 | `workflow-engine/` | #37 | P2 | ✅ built — Temporal; one workflow/job, custody journal, seals |
 | `capability-router/` | #38 | P2 | ✅ built — per-pool task queues + independent concurrency |
 | `session-pool/` | #43 | P3 | ✅ built — health-scored accounts, atomic lease, quarantine-first |
+| `connectors/` | #39 | P4 | ✅ built — external-API wrappers behind /enrich/*, results sealed |
 
 ## Stack
 
