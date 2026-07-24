@@ -156,6 +156,10 @@ not the boundary — which is how the whole codebase moves inside the architectu
     task queue with its own concurrency limit; dispatch (`start_capture_workflow`) and `worker.py <pool>` use it.
     A test proves the guarantee: a saturated Processing pool does not starve Browser. **Phase 2 complete.**
 - **Phase 3 — Account & Session Pool.** Health-scoring + quarantine over the existing per-worker profiles.
+  - **Account & Session Pool (#43) — implemented** in [`platform/session-pool/`](../platform/session-pool/).
+    Health-scored accounts with atomic leasing (`FOR UPDATE SKIP LOCKED` → concurrent workers get distinct
+    accounts), 1↔1 account/profile binding (`UNIQUE(platform, profile_ref)`), quarantine-on-first-warning, and
+    raised exhaustion. Verified against real Postgres incl. a two-session concurrent-lease test. 8 tests pass.
 - **Phase 4 — Expand capture surface.** Device Workers (Android), Processing Workers (yt-dlp/ffmpeg/Whisper/OCR),
   Connector Workers.
 - **Phase 5 — Outputs & intelligence.** Evidence Package builder, LLM Triage, Notify.

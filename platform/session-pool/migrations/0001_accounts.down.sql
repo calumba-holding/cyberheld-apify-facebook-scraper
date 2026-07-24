@@ -1,0 +1,4 @@
+BEGIN;
+DROP TABLE IF EXISTS accounts;
+DROP FUNCTION IF EXISTS sp_set_updated_at();
+COMMIT;

@@ -16,6 +16,7 @@ architecture, one service at a time.
 | `ingest-api/` | #36 | P2 | ✅ built — FastAPI one door (202 + job_id, capture/enrich/status) |
 | `workflow-engine/` | #37 | P2 | ✅ built — Temporal; one workflow/job, custody journal, seals |
 | `capability-router/` | #38 | P2 | ✅ built — per-pool task queues + independent concurrency |
+| `session-pool/` | #43 | P3 | ✅ built — health-scored accounts, atomic lease, quarantine-first |
 
 ## Stack
 
