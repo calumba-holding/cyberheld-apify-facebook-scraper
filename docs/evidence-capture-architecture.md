@@ -142,9 +142,35 @@ Browser-Workers pool. As later phases land, only the *caller* of that seam chang
 not the boundary — which is how the whole codebase moves inside the architecture incrementally.
 - **Phase 2 — The one door + durability.** Ingest API (FastAPI, 202 + job_id) + Temporal (workflow per job,
   step journal) + Capability Router (per-pool queues). Make the Node capture workers callable behind the contract.
+  - **Ingest API (#36) — implemented** in [`platform/ingest-api/`](../platform/ingest-api/). FastAPI, API-key
+    auth (fail-closed), capture routes (`/fb/*`, `/ig/*`, `/tiktok/*`) + enrich (`/enrich/*`) + `GET /jobs/{id}`.
+    Opens a case + job via the metadata `Repository` and returns `202 + job_id` without blocking; dispatch to
+    Temporal (#37) plugs into `routes.py::_accept` without changing the contract. 9 tests pass.
+  - **Temporal workflow engine (#37) — implemented** in [`platform/workflow-engine/`](../platform/workflow-engine/).
+    `CaptureWorkflow` runs one workflow per job (launch → capture → seal); each step is journaled to the custody
+    log before/after, and the terminal step routes artifacts through the real Sealing service. Verified
+    end-to-end against an ephemeral local Temporal server + real Postgres (custody log journaled in order, job
+    sealed). `client.start_capture_workflow` is the hook the Ingest API calls to enqueue a job.
+  - **Capability Router (#38) — implemented** in [`platform/capability-router/`](../platform/capability-router/).
+    Routes each job to a worker pool (browser/device/watch/processing/connector), each an independent Temporal
+    task queue with its own concurrency limit; dispatch (`start_capture_workflow`) and `worker.py <pool>` use it.
+    A test proves the guarantee: a saturated Processing pool does not starve Browser. **Phase 2 complete.**
 - **Phase 3 — Account & Session Pool.** Health-scoring + quarantine over the existing per-worker profiles.
+  - **Account & Session Pool (#43) — implemented** in [`platform/session-pool/`](../platform/session-pool/).
+    Health-scored accounts with atomic leasing (`FOR UPDATE SKIP LOCKED` → concurrent workers get distinct
+    accounts), 1↔1 account/profile binding (`UNIQUE(platform, profile_ref)`), quarantine-on-first-warning, and
+    raised exhaustion. Verified against real Postgres incl. a two-session concurrent-lease test. 8 tests pass.
 - **Phase 4 — Expand capture surface.** Device Workers (Android), Processing Workers (yt-dlp/ffmpeg/Whisper/OCR),
   Connector Workers.
+  - **Connector Workers (#39) — implemented** in [`platform/connectors/`](../platform/connectors/). Pluggable
+    connector framework (`email-verify`, `domain`) behind `/enrich/*`; external access injected (offline-
+    testable); results sealed into the evidence record via `seal_connector_result`. 8 tests pass.
+  - **Processing Workers (#45) — implemented** in [`platform/processing/`](../platform/processing/). Pipeline
+    `download → ffmpeg (probe + frames) → OCR + transcript`; ffmpeg/ffprobe/tesseract exercised for real,
+    Whisper behind a `Transcriber` interface (NullTranscriber default, model not shipped). Derived artifacts
+    (transcript/OCR/frames) sealed into DB + WORM. 6 tests pass.
+  - Device Workers (#44) remain — needs Android/adb/UiAutomator (hardware), so it'll be built against the same
+    bundle contract with the device steps behind an interface.
 - **Phase 5 — Outputs & intelligence.** Evidence Package builder, LLM Triage, Notify.
 
 Issues #29–32 are the whole of Phase 0 and the bottom-left corner of the board; the phases above them are net-new.

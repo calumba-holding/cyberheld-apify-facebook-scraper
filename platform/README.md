@@ -13,9 +13,12 @@ architecture, one service at a time.
 | `metadata-db/` | #33 | P1 | ✅ built — queryable index + custody log |
 | `sealing/` | #34 | P1 | ✅ built — only route to storage (SHA-256 + TSA + signed manifest) |
 | `object-store/` | #35 | P1 | ✅ built — S3/MinIO Object Lock WORM (`sealing.s3_storage.S3WormBackend`) |
-| _(ingest api)_ | #36 | P2 | ⬜ FastAPI one door |
-| _(temporal)_ | #37 | P2 | ⬜ durable workflow / custody journal |
-| _(router)_ | #38 | P2 | ⬜ per-pool queues |
+| `ingest-api/` | #36 | P2 | ✅ built — FastAPI one door (202 + job_id, capture/enrich/status) |
+| `workflow-engine/` | #37 | P2 | ✅ built — Temporal; one workflow/job, custody journal, seals |
+| `capability-router/` | #38 | P2 | ✅ built — per-pool task queues + independent concurrency |
+| `session-pool/` | #43 | P3 | ✅ built — health-scored accounts, atomic lease, quarantine-first |
+| `connectors/` | #39 | P4 | ✅ built — external-API wrappers behind /enrich/*, results sealed |
+| `processing/` | #45 | P4 | ✅ built — ffmpeg frames + tesseract OCR (+Whisper iface), derived artifacts sealed |
 
 ## Stack
 

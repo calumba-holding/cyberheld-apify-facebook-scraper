@@ -1,0 +1,9 @@
+[project]
+name = "connectors"
+version = "0.1.0"
+description = "Evidence-capture Connector Workers — thin external-API wrappers (#39)"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../metadata-db/src", "../sealing/src"]
+testpaths = ["tests"]
