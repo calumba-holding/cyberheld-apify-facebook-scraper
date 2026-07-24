@@ -19,6 +19,9 @@ architecture, one service at a time.
 | `session-pool/` | #43 | P3 | ✅ built — health-scored accounts, atomic lease, quarantine-first |
 | `connectors/` | #39 | P4 | ✅ built — external-API wrappers behind /enrich/*, results sealed |
 | `processing/` | #45 | P4 | ✅ built — ffmpeg frames + tesseract OCR (+Whisper iface), derived artifacts sealed |
+| `evidence-package/` | #40 | P5 | ✅ built — self-contained, offline-verifiable zip (valid after source deleted) |
+| `triage/` | #41 | P5 | ✅ built — LLM triage (claude-opus-4-8) flags content crossing the legal threshold |
+| `notify/` | #42 | P5 | ✅ built — webhook/email/MCP callback on completion, at-least-once, never blocks |
 
 ## Stack
 
