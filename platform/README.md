@@ -14,7 +14,7 @@ architecture, one service at a time.
 | `sealing/` | #34 | P1 | ✅ built — only route to storage (SHA-256 + TSA + signed manifest) |
 | `object-store/` | #35 | P1 | ✅ built — S3/MinIO Object Lock WORM (`sealing.s3_storage.S3WormBackend`) |
 | `ingest-api/` | #36 | P2 | ✅ built — FastAPI one door (202 + job_id, capture/enrich/status) |
-| _(temporal)_ | #37 | P2 | ⬜ durable workflow / custody journal |
+| `workflow-engine/` | #37 | P2 | ✅ built — Temporal; one workflow/job, custody journal, seals |
 | _(router)_ | #38 | P2 | ⬜ per-pool queues |
 
 ## Stack

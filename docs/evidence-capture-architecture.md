@@ -146,6 +146,11 @@ not the boundary — which is how the whole codebase moves inside the architectu
     auth (fail-closed), capture routes (`/fb/*`, `/ig/*`, `/tiktok/*`) + enrich (`/enrich/*`) + `GET /jobs/{id}`.
     Opens a case + job via the metadata `Repository` and returns `202 + job_id` without blocking; dispatch to
     Temporal (#37) plugs into `routes.py::_accept` without changing the contract. 9 tests pass.
+  - **Temporal workflow engine (#37) — implemented** in [`platform/workflow-engine/`](../platform/workflow-engine/).
+    `CaptureWorkflow` runs one workflow per job (launch → capture → seal); each step is journaled to the custody
+    log before/after, and the terminal step routes artifacts through the real Sealing service. Verified
+    end-to-end against an ephemeral local Temporal server + real Postgres (custody log journaled in order, job
+    sealed). `client.start_capture_workflow` is the hook the Ingest API calls to enqueue a job.
 - **Phase 3 — Account & Session Pool.** Health-scoring + quarantine over the existing per-worker profiles.
 - **Phase 4 — Expand capture surface.** Device Workers (Android), Processing Workers (yt-dlp/ffmpeg/Whisper/OCR),
   Connector Workers.
