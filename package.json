@@ -29,6 +29,7 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "watch": "tsx src/main.ts watch",
+    "watch:serve": "tsx src/watch/server.ts",
     "build": "tsc",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
