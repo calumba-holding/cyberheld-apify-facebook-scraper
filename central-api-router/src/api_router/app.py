@@ -1,32 +1,75 @@
-"""Central API Router — FastAPI app factory.
+"""API Gateway — the central router.
 
-The single door that fronts the evidence-capture architecture: authenticates,
-opens a case, returns 202 + job_id, and routes each request to the right capability.
-It runs no scraper and stores no evidence itself — those are downstream capabilities
-it routes to (see /v1/capabilities for the full map)."""
+Exactly the diagram: one gateway that routes four paths to four separate scraper
+services, each its own docker container exposing a single API. The gateway forwards
+the request to the scraper's API and returns its response. It scrapes nothing, stores
+nothing, and has no jobs.
+
+    /facebook/watch       -> API Facebook Watch       (docker: watch-posting)
+    /facebook/screenshot  -> API Facebook Screenshot  (docker: screenshot)
+    /instagram/screenshot -> API Instagram Screenshot (docker: screenshot)
+    /facebook/comments    -> API Facebook Comments    (docker: comments-scraper)
+"""
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+import httpx
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
-from .routes import build_router
+from .services import SCRAPER_ENDPOINT, SERVICES, ScraperService
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
+
+
+def _make_handler(svc: ScraperService):
+    async def handler(request: Request):
+        # forward the incoming body to the scraper service's single API
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        target = f"{svc.url}{SCRAPER_ENDPOINT}"
+        try:
+            async with httpx.AsyncClient(timeout=300) as client:
+                resp = await client.post(target, json=payload)
+            return JSONResponse(
+                content=_safe_json(resp), status_code=resp.status_code,
+            )
+        except httpx.RequestError:
+            return JSONResponse(
+                status_code=502,
+                content={
+                    "error": "scraper_unavailable",
+                    "service": svc.name,
+                    "container": svc.container,
+                    "url": target,
+                },
+            )
+
+    return handler
+
+
+def _safe_json(resp: httpx.Response):
+    try:
+        return resp.json()
+    except Exception:
+        return {"raw": resp.text}
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="Evidence Capture — Central API Router",
+        title="API Gateway",
         version=VERSION,
-        summary="One door in. Routes capture/enrich requests to capabilities; never blocks, runs no scraper.",
-        description=(
-            "Central API gateway/router for the evidence-capture platform. It owns the "
-            "map of the whole system (`GET /v1/capabilities`) and routes each request to "
-            "the right capability. Backends are interfaces — no scraper is built into the "
-            "gateway."
-        ),
+        summary="Routes each path to its own scraper service. No scraping, no jobs, in the gateway.",
     )
-    app.include_router(build_router())
+
+    # the four routes -> four scraper services
+    for svc in SERVICES:
+        app.add_api_route(
+            svc.route, _make_handler(svc), methods=["POST"],
+            name=svc.name, tags=["gateway"],
+        )
 
     @app.get("/health", tags=["meta"])
     async def health() -> dict:
@@ -34,11 +77,19 @@ def create_app() -> FastAPI:
 
     @app.get("/", tags=["meta"])
     async def root() -> dict:
+        # the architecture: the gateway and the services it routes to
         return {
-            "service": "central-api-router",
+            "service": "API Gateway",
             "version": VERSION,
-            "docs": "/docs",
-            "architecture": "/v1/capabilities",
+            "routes": [
+                {
+                    "path": s.route,
+                    "service": s.name,
+                    "docker_container": s.container,
+                    "forwards_to": f"{s.url}{SCRAPER_ENDPOINT}",
+                }
+                for s in SERVICES
+            ],
         }
 
     return app

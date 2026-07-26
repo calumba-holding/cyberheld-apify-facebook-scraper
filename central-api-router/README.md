@@ -1,29 +1,46 @@
-# Central API Router
+# API Gateway
 
-**One door in.** A single API gateway that fronts the whole evidence-capture
-architecture: it authenticates, opens a case, returns `202 + job_id`, and **routes**
-each request to the right capability. It **runs no scraper** and stores no evidence
-itself — those are downstream capabilities it routes to.
+The central router from the architecture diagram. **One gateway** that routes four
+paths to **four separate scraper services**, each its own **docker container** exposing
+a single API. The gateway **forwards** the request to the scraper's API and returns its
+response — it scrapes nothing, stores nothing, and has **no jobs**.
 
-This is the *architecture as a service*: the router owns the map of the entire system
-(`GET /v1/capabilities`) and dispatches to it. Backends are interfaces/stubs — swapping
-in a real backend (Temporal / the pools) doesn't change the gateway contract.
+```
+                         ┌─────────────┐
+                         │ API Gateway │
+                         └──────┬──────┘
+   /facebook/watch  ───────────┤   ┌────────────────────────┐  docker: watch-posting
+   /facebook/screenshot ───────┼──▶│ API Facebook Screenshot │  docker: screenshot
+   /instagram/screenshot ──────┤   │ API Instagram Screenshot│  docker: screenshot
+   /facebook/comments ─────────┘   │ API Facebook Comments   │  docker: comments-scraper
+                                    └────────────────────────┘
+```
 
-## Endpoints (all under `/v1`, `X-API-Key` required except `/health`)
+## Endpoints (all the gateway has)
 
-- **capture** — `POST /fb/profile · /fb/post · /fb/reel · /ig/profile · /ig/post · /tiktok/profile · /tiktok/post`
-  body `{ "target_url": "…", "case_id"?, "external_ref"?, "device"? }` → `202 { job_id, case_id, routed_to, pool }`
-- **enrich** — `POST /enrich/email-verify · /enrich/domain` — body `{ "value": "…" }`
-- **status** — `GET /jobs/{id}` (status + routing + trace), `GET /jobs`
-- **architecture** — `GET /capabilities` (the full map), `GET /capabilities/{id}`
-- `GET /health`, `GET /`
+| Path | Scraper service | Docker container |
+|------|-----------------|------------------|
+| `POST /facebook/watch` | API Facebook Watch | `watch-posting` |
+| `POST /facebook/screenshot` | API Facebook Screenshot | `screenshot` |
+| `POST /instagram/screenshot` | API Instagram Screenshot | `screenshot` |
+| `POST /facebook/comments` | API Facebook Comments | `comments-scraper` |
 
-## Routing
+Plus `GET /health` and `GET /` (the route → service map). Nothing else.
 
-`job_type → capability + pool`: `fb|ig|tiktok/*` → **browser** (or **device** with
-`"device": true`), `enrich/*` → **connector**, `processing/*` → **processing**,
-`watch/*` → **watch**. See `src/api_router/routing.py` and the capability map in
-`src/api_router/capabilities.py`.
+Each scraper service exposes one API — the gateway calls `POST {service}/run` and
+returns the result. If a scraper service is down, the gateway returns `502
+{ "error": "scraper_unavailable", … }`.
+
+## Configure the scraper service URLs
+
+Defaults are docker-compose service names; override per service:
+
+```
+SCRAPER_FACEBOOK_WATCH_URL        (default http://facebook-watch:8000)
+SCRAPER_FACEBOOK_SCREENSHOT_URL   (default http://facebook-screenshot:8000)
+SCRAPER_INSTAGRAM_SCREENSHOT_URL  (default http://instagram-screenshot:8000)
+SCRAPER_FACEBOOK_COMMENTS_URL     (default http://facebook-comments:8000)
+```
 
 ## Run
 
@@ -31,15 +48,15 @@ in a real backend (Temporal / the pools) doesn't change the gateway contract.
 cd central-api-router
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-export GATEWAY_API_KEY=dev-key
 uvicorn api_router.app:app --port 8080     # docs at http://localhost:8080/docs
-pytest                                     # no DB / no services needed
+pytest
 ```
 
-Auth is **fail-closed**: with no `GATEWAY_API_KEY(S)` set, every request is rejected.
+Or the whole architecture with docker-compose (gateway + the four scraper-service
+containers): `docker compose up`. The scraper services are separate images (each its
+own repo/build) — the compose wires the gateway to them.
 
 ## Scope
 
-Deliberately **architecture + routing only** — no scraper, no DB, no sealing built in.
-Those are downstream capabilities the router knows about and routes to. The full
-platform implementation lives on `master` for reference.
+Gateway/routing **only**. Scrapers are separate services, decoupled from the API, each
+called via its single API. No capture-endpoint sprawl, no enrich, no jobs, no DB.
