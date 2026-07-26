@@ -124,6 +124,19 @@ const server = createServer((req, res) => {
     send(res, 404, { error: 'not_found', hint: 'POST /run  { target_url }' });
 });
 
+server.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE') {
+        process.stderr.write(
+            `API Facebook Watch: port ${String(PORT)} is already in use — the service is probably `
+            + `already running. Reuse it, or stop the other listener first:\n`
+            + `  lsof -nP -iTCP:${String(PORT)} -sTCP:LISTEN   # find the PID\n`
+            + `  kill <PID>\n`,
+        );
+        process.exit(1);
+    }
+    throw error;
+});
+
 server.listen(PORT, HOST, () => {
     process.stderr.write(`API Facebook Watch listening on ${HOST}:${String(PORT)} (profile: ${PROFILE_ROOT})\n`);
 });
