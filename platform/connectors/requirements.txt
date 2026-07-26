@@ -1,4 +1,0 @@
-# Core has no third-party runtime deps. Sealing enrichment output uses the
-# sealing + metadata_db packages (see pyproject PYTHONPATH). Real DNS/HTTP
-# connectors add their own client libs (e.g. dnspython) behind the resolver interface.
-pytest>=8.0

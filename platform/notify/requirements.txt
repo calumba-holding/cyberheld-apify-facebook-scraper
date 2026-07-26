@@ -1,4 +1,0 @@
-SQLAlchemy>=2.0,<2.1
-psycopg[binary]>=3.2
-httpx>=0.27          # default webhook/MCP transport (email uses stdlib smtplib)
-pytest>=8.0

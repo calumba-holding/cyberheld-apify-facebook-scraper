@@ -1,4 +1,0 @@
-# System binaries (not pip): ffmpeg, ffprobe, tesseract, yt-dlp, and (optional)
-# the `whisper` CLI + a model for transcription.
-pytest>=8.0
-Pillow>=10   # test-only: render a known text image for the OCR test

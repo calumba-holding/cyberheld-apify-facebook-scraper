@@ -1,0 +1,14 @@
+[project]
+name = "central-api-router"
+version = "0.1.0"
+description = "Central API router / gateway — one door that fronts the evidence-capture architecture and routes to capabilities. Architecture only; no scraper built."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

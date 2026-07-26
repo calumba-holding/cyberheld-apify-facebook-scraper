@@ -1,4 +1,0 @@
-SQLAlchemy>=2.0,<2.1
-psycopg[binary]>=3.2
-pytest>=8.0
-# reuses metadata_db.engine — add ../metadata-db/src to PYTHONPATH (see pyproject).
