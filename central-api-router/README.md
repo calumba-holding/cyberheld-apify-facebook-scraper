@@ -56,7 +56,18 @@ Or the whole architecture with docker-compose (gateway + the four scraper-servic
 containers): `docker compose up`. The scraper services are separate images (each its
 own repo/build) — the compose wires the gateway to them.
 
+## The one sub-API: Chrome sessions
+
+Kept per the client, as a single sub-API. `API Chrome Sessions` (docker container
+`chrome-sessions`) is its own service exposing one API; the **scraper services call it
+to lease a signed-in Chrome session** (1 account ↔ 1 profile, health-scored,
+quarantine-first). It is **not** a gateway route — it's a shared dependency of the
+scrapers. Configure with `SESSION_API_URL` (default `http://chrome-sessions:8000`).
+It shows up in `GET /` under `session_sub_api`, and in `docker-compose.yml` with the
+scrapers `depends_on` it.
+
 ## Scope
 
-Gateway/routing **only**. Scrapers are separate services, decoupled from the API, each
-called via its single API. No capture-endpoint sprawl, no enrich, no jobs, no DB.
+Gateway/routing **only** + the one Chrome-session sub-API. Scrapers are separate
+services, decoupled from the API, each called via its single API. No capture-endpoint
+sprawl, no enrich, no jobs, no DB in the gateway.

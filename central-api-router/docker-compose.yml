@@ -21,19 +21,39 @@ services:
       - instagram-screenshot
       - facebook-comments
 
+  # --- the one sub-API: the session-based Chrome system ---
+  # Own service/container, own API. The scraper services call it to lease a
+  # signed-in Chrome session (1 account ↔ 1 profile, health-scored).
+  chrome-sessions:           # docker container: chrome-sessions
+    image: ${SESSION_API_IMAGE:-chrome-sessions:latest}
+    expose: ["8000"]
+
   # --- separate scraper services (each = one API + one docker container) ---
+  # Each depends on the session sub-API and reaches it at SESSION_API_URL.
   facebook-watch:            # docker container: watch-posting
     image: ${SCRAPER_FACEBOOK_WATCH_IMAGE:-scraper-facebook-watch:latest}
     expose: ["8000"]
+    environment:
+      SESSION_API_URL: http://chrome-sessions:8000
+    depends_on: [chrome-sessions]
 
   facebook-screenshot:       # docker container: screenshot
     image: ${SCRAPER_FACEBOOK_SCREENSHOT_IMAGE:-scraper-facebook-screenshot:latest}
     expose: ["8000"]
+    environment:
+      SESSION_API_URL: http://chrome-sessions:8000
+    depends_on: [chrome-sessions]
 
   instagram-screenshot:      # docker container: screenshot
     image: ${SCRAPER_INSTAGRAM_SCREENSHOT_IMAGE:-scraper-instagram-screenshot:latest}
     expose: ["8000"]
+    environment:
+      SESSION_API_URL: http://chrome-sessions:8000
+    depends_on: [chrome-sessions]
 
   facebook-comments:         # docker container: comments-scraper
     image: ${SCRAPER_FACEBOOK_COMMENTS_IMAGE:-scraper-facebook-comments:latest}
     expose: ["8000"]
+    environment:
+      SESSION_API_URL: http://chrome-sessions:8000
+    depends_on: [chrome-sessions]

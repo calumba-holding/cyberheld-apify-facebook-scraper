@@ -17,7 +17,7 @@ import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from .services import SCRAPER_ENDPOINT, SERVICES, ScraperService
+from .services import SCRAPER_ENDPOINT, SERVICES, SESSION_SUB_API, ScraperService
 
 VERSION = "0.2.0"
 
@@ -90,6 +90,14 @@ def create_app() -> FastAPI:
                 }
                 for s in SERVICES
             ],
+            # the one sub-API the scraper services depend on (not a gateway route)
+            "session_sub_api": {
+                "service": SESSION_SUB_API.name,
+                "docker_container": SESSION_SUB_API.container,
+                "url": SESSION_SUB_API.url,
+                "purpose": SESSION_SUB_API.purpose,
+                "used_by": "scraper services (to lease a signed-in Chrome session)",
+            },
         }
 
     return app

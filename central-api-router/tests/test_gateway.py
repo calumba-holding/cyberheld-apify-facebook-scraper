@@ -38,6 +38,16 @@ def test_each_route_forwards_to_its_scraper_service(client):
         assert body["service"] == svc.name
 
 
+def test_session_sub_api_present(client):
+    d = client.get("/").json()
+    s = d["session_sub_api"]
+    assert s["service"] == "API Chrome Sessions"
+    assert s["docker_container"] == "chrome-sessions"
+    assert "lease" in s["used_by"] or "scraper" in s["used_by"]
+    # it is a sub-API, not a gateway route
+    assert client.post("/sessions", json={}).status_code == 404
+
+
 def test_removed_endpoints_are_gone(client):
     # the old capture/enrich/jobs/capabilities sprawl must be absent
     for path in ["/v1/fb/post", "/fb/post", "/v1/enrich/domain", "/v1/jobs",
