@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from "fs";
+import { existsSync, readFileSync, rmSync, statSync } from "fs";
 import { join } from "path";
 import { PROFILE_ROOT, SCRAPER_DIR } from "./config";
 import type { Account } from "./pool";
@@ -47,4 +47,20 @@ export function isSignedIn(a: Account): { signed_in: boolean; where: string | nu
     }
   }
   return { signed_in: false, where: null };
+}
+
+/** Sign out: remove the session cookie DBs from this account's profile(s). The
+ *  profile stays; only the login is cleared, so `isSignedIn` becomes false. */
+export function signOut(a: Account): number {
+  let removed = 0;
+  for (const dir of candidateDirs(a)) {
+    for (const f of cookieFiles(dir)) {
+      try {
+        if (existsSync(f)) { rmSync(f); removed++; }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return removed;
 }

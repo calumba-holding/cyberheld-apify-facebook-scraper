@@ -21,7 +21,23 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const logPath = join(RUNS_DIR, params.id, "run.log");
   if (existsSync(logPath)) {
     const all = readFileSync(logPath, "utf8").split("\n");
-    log = all.slice(-60).join("\n");
+    log = all.slice(-80).join("\n");
   }
-  return NextResponse.json({ job, steps, log });
+
+  // the captured result JSON (once the scraper finishes)
+  let result: any = null;
+  const resPath = join(RUNS_DIR, params.id, "result.json");
+  if (existsSync(resPath)) {
+    try { result = JSON.parse(readFileSync(resPath, "utf8")); } catch { /* mid-write */ }
+  }
+
+  // artifact files (screenshots, video) written for this run
+  let artifacts: string[] = [];
+  try {
+    const { readdirSync } = require("fs");
+    artifacts = readdirSync(join(RUNS_DIR, params.id))
+      .filter((f: string) => /\.(png|jpg|jpeg|webm|mp4)$/i.test(f));
+  } catch { /* dir not created yet */ }
+
+  return NextResponse.json({ job, steps, log, result, artifacts });
 }

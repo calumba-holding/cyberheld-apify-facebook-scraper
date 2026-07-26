@@ -87,8 +87,18 @@ export default function JobsPanel() {
             </div>
             <div className="meta">
               custody: {(detail.steps ?? []).map((s: any) => `${s.step_index}.${s.name}:${s.state}`).join("  ") || "—"}
+              {detail.artifacts?.length ? ` · artifacts: ${detail.artifacts.join(", ")}` : ""}
             </div>
-            <div className="log" style={{ marginTop: 10 }}>{detail.log || "(waiting for scraper output…)"}</div>
+
+            <div style={{ marginTop: 10, fontWeight: 600, color: "var(--muted)", fontSize: 12 }}>LOGS (live)</div>
+            <div className="log">{detail.log || "(waiting for scraper output…)"}</div>
+
+            {detail.result && (
+              <>
+                <div style={{ marginTop: 10, fontWeight: 600, color: "var(--muted)", fontSize: 12 }}>CAPTURED RESULT (result.json)</div>
+                <div className="log">{JSON.stringify(detail.result, null, 2)}</div>
+              </>
+            )}
           </div>
         </>
       )}

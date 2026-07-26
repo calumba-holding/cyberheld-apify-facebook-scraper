@@ -55,6 +55,15 @@ export default function PoolBoard() {
     setMsg(d.message ?? d.error ?? "");
     load();
   }
+  async function signOut(a: Account) {
+    if (!confirm(`Sign out “${a.account_ref}”? This clears its saved ${a.platform} login.`)) return;
+    await fetch(`/api/pool/${a.id}`, {
+      method: "PATCH", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "signout" }),
+    });
+    setMsg(`Signed out ${a.account_ref}.`);
+    load();
+  }
 
   return (
     <>
@@ -107,7 +116,9 @@ export default function PoolBoard() {
             <div className="meta">health {a.health_score} · warnings {a.warnings}</div>
             <div className="row" style={{ marginTop: 10 }}>
               <div className="formrow">
-                <button className="small primary" onClick={() => signIn(a)}>Sign in</button>
+                {a.signed_in
+                  ? <button className="small ghost" onClick={() => signOut(a)}>Sign out</button>
+                  : <button className="small primary" onClick={() => signIn(a)}>Sign in</button>}
                 <button className="small" onClick={() => window.open(`/api/pool/${a.id}/vnc`, "_blank")}>Open VNC</button>
               </div>
               <div className="formrow">

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { q } from "@/lib/db";
 import { setState } from "@/lib/pool";
+import { signOut } from "@/lib/signedin";
 import { startLogin } from "@/lib/runner";
 import type { Account } from "@/lib/pool";
 
@@ -11,9 +12,17 @@ async function getAccount(id: string): Promise<Account | null> {
   return rows[0] ?? null;
 }
 
-// State transitions: release | quarantine | retire | activate
+// signout | release | quarantine | retire | activate
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const { action } = await req.json().catch(() => ({}));
+
+  if (action === "signout") {
+    const acct = await getAccount(params.id);
+    if (!acct) return NextResponse.json({ error: "account not found" }, { status: 404 });
+    const removed = signOut(acct);
+    return NextResponse.json({ ok: true, signed_out: true, cleared: removed });
+  }
+
   const map: Record<string, string> = {
     release: "active",
     activate: "active",
