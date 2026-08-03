@@ -9,6 +9,7 @@ import { POST_ENGAGEMENT_SCRAPER, scrapePostEngagement } from './scrapers/post-e
 import { POST_SCREENSHOT_SCRAPER, scrapePostScreenshot } from './scrapers/post-screenshot/index.js';
 import type { GraphqlRequestTemplate } from './scrapers/post-engagement/public-post-api-graphql.js';
 import { tryOpenFacebookPublicPostViaPageRoot } from './scrapers/post-engagement/public-post-api.js';
+import { assertFacebookAuthenticatedContext } from './session.js';
 import { captureFacebookBlockedPageArtifact } from './shared/block-diagnostics.js';
 import { prepareFacebookGuestPage, warmFacebookPublicSession } from './shared/guest-session.js';
 import {
@@ -106,6 +107,11 @@ const runScrape = async (
     };
 
     try {
+        // GATE: an authenticated (persistent-profile) scrape must run on a signed-in session.
+        if (options.browserSessionMode === 'persistent-profile') {
+            await assertFacebookAuthenticatedContext(context);
+        }
+
         if (scraper === POST_ENGAGEMENT_SCRAPER && options.browserSessionMode === 'persistent-profile') {
             const scrapeResult = await runPostEngagementScrapeOnPage(page, targetUrl, options);
             await closePage();
