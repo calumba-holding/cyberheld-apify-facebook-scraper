@@ -36,6 +36,13 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build && npm prune --omit=dev
 
+# tsc does not emit the profile scraper's injected browser scripts (.js) — copy into dist.
+RUN mkdir -p dist/facebook/scrapers/profile/browser \
+  && cp src/facebook/scrapers/profile/browser/*.js dist/facebook/scrapers/profile/browser/
+
+# sqlite3 CLI — the session gate reads the Chrome cookie store to check for a signed-in session.
+RUN apt-get update && apt-get install -y --no-install-recommends sqlite3 && rm -rf /var/lib/apt/lists/*
+
 COPY docker/entrypoint.sh docker/start-display.sh docker/focus-chrome.sh docker/fluxbox-init /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/start-display.sh /usr/local/bin/focus-chrome.sh \
   && mkdir -p /root/.fluxbox \

@@ -20,6 +20,7 @@ Facebook scraper worker container
 Commands:
   login              Open Facebook in a persistent profile (use noVNC to sign in manually)
   scrape <url>       Scrape one post URL with the saved profile (post-screenshot by default)
+  profile <url>      Scrape a profile + latest posts (SCRAPE_MAX_POSTS, default 20)
   watch [--once]         Comment watch (starts Chrome immediately)
   observe-watch [--once] Wait for you to open noVNC, then watch (see the post live)
   observe-login          Wait for noVNC, then Facebook login
@@ -169,6 +170,12 @@ run_scrape() {
     --artifact-root-dir "${SCRAPE_ARTIFACT_ROOT_DIR}"
 }
 
+run_profile() {
+  local url="${1:?profile requires a Facebook profile URL}"
+  start_display
+  exec node /app/dist/facebook/scrapers/profile/run.js "${url}"
+}
+
 cmd="${1:-help}"
 shift || true
 
@@ -178,6 +185,9 @@ case "${cmd}" in
     ;;
   scrape)
     run_scrape "$@"
+    ;;
+  profile)
+    run_profile "$@"
     ;;
   watch)
     if [[ -z "${SCRAPE_DISPLAY_STARTED:-}" ]]; then
