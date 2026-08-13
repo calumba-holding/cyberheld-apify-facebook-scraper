@@ -1,0 +1,56 @@
+/* Selected-worker platform provisioning and right-side TV monitor. */
+.worker-head-actions { display: flex; align-items: stretch; gap: 8px; }
+.platform-provision { display: flex; gap: 5px; }
+.platform-provision button { min-width: 132px; min-height: 44px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; background: var(--background); color: var(--foreground); text-align: left; }
+.platform-provision button > svg:first-child { width: 18px; height: 18px; padding: 4px; border-radius: 3px; background: oklch(0.88 0.025 245); color: var(--muted); }
+.platform-provision button.facebook.provisioned { border-color: oklch(0.7 0.09 250); background: oklch(0.965 0.018 250); }
+.platform-provision button.facebook.provisioned > svg:first-child { background: oklch(0.5 0.19 251); color: white; }
+.platform-provision button.instagram.provisioned { border-color: oklch(0.72 0.09 344); background: oklch(0.97 0.018 344); }
+.platform-provision button.instagram.provisioned > svg:first-child { background: oklch(0.51 0.19 344); color: white; }
+.platform-provision button strong { display: block; font-size: 9px; text-transform: capitalize; }
+.platform-provision button small { display: block; margin-top: 1px; color: var(--muted); font: 500 7px var(--font-mono), monospace; text-transform: uppercase; }
+.platform-provision button > svg:last-child { color: var(--success); }
+.worker-head-actions .worker-head-status > div { min-width: 58px; }
+.monitor-primary { display: inline-flex; align-items: center; gap: 7px; }
+
+.worker-thread { grid-template-columns: 34px minmax(0, 1fr) auto 14px; }
+.thread-platforms i svg { width: 10px; height: 10px; }
+.thread-chevron { color: var(--muted); transition: transform 100ms ease-out; }
+.worker-thread:hover .thread-chevron, .worker-thread.selected .thread-chevron { transform: translateX(2px); color: var(--primary); }
+.thread-tooltip span { display: flex; align-items: center; gap: 6px; }
+.thread-tooltip span svg { width: 10px; }
+.mini-loader { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: monitor-spin .8s linear infinite; }
+
+.workspace-grid.has-monitor { grid-template-columns: 238px minmax(430px, 1fr) minmax(360px, .78fr) !important; grid-template-areas: "sidebar capture monitor" "sidebar jobs monitor"; }
+.workspace-grid.has-monitor:has(.capture-panel.expanded) { grid-template-rows: 480px minmax(0, 1fr); }
+.monitor-dock { grid-area: monitor; min-width: 0; min-height: 0; display: grid; grid-template-rows: 50px minmax(0, 1fr) 38px; border: 1px solid oklch(0.32 0.03 245); border-radius: 6px; overflow: hidden; background: oklch(0.15 0.018 245); color: white; }
+.monitor-dock > header { display: flex; align-items: center; justify-content: space-between; padding: 7px 9px 7px 12px; border-bottom: 1px solid oklch(0.3 0.025 245); }
+.monitor-dock > header span { display: block; color: oklch(0.72 0.09 220); font: 650 7px var(--font-mono), monospace; text-transform: uppercase; letter-spacing: .11em; }
+.monitor-dock > header strong { display: block; margin-top: 2px; font-size: 11px; }
+.monitor-dock > header > div:last-child { display: flex; gap: 5px; }
+.monitor-dock button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid oklch(0.38 0.025 245); border-radius: 4px; background: transparent; color: white; }
+.monitor-dock button:hover { background: oklch(0.25 0.025 245); }
+.monitor-dock-frame { position: relative; min-height: 0; background: black; }
+.monitor-dock-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+.monitor-dock-frame .monitor-loading { z-index: 2; }
+.monitor-dock > footer { display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-top: 1px solid oklch(0.3 0.025 245); color: oklch(0.7 0.02 245); font: 500 8px var(--font-mono), monospace; }
+.monitor-dock > footer a { display: inline-flex; align-items: center; gap: 5px; color: oklch(0.78 0.11 220); text-decoration: none; }
+
+@media (max-width: 1250px) {
+  .platform-provision button { min-width: 108px; }
+  .platform-provision button small { display: none; }
+  .workspace-grid.has-monitor { grid-template-columns: 210px minmax(380px, 1fr) minmax(320px, .72fr) !important; }
+}
+
+@media (max-width: 920px) {
+  .worker-head-actions { margin-top: 10px; display: grid; }
+  .platform-provision { display: grid; grid-template-columns: 1fr 1fr; }
+  .platform-provision button { min-width: 0; }
+  .monitor-dock { position: fixed; inset: 58px 0 calc(64px + env(safe-area-inset-bottom)); z-index: 45; border: 0; border-radius: 0; }
+  .workspace-grid.has-monitor { display: block !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-loader { animation: none; }
+  .thread-chevron { transition: none; }
+}

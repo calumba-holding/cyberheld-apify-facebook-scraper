@@ -6,6 +6,8 @@
 .zed
 dist
 node_modules
+.next/
+.brand-preview/
 
 # Python (control plane — platform/*)
 __pycache__/
