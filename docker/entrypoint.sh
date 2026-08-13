@@ -5,6 +5,7 @@ export DISPLAY="${DISPLAY:-:99}"
 export SCRAPE_PROFILE_ROOT_DIR="${SCRAPE_PROFILE_ROOT_DIR:-/data/profiles}"
 export SCRAPE_CHROME_EXECUTABLE="${SCRAPE_CHROME_EXECUTABLE:-/usr/bin/google-chrome-stable}"
 export SCRAPE_ARTIFACT_ROOT_DIR="${SCRAPE_ARTIFACT_ROOT_DIR:-/data/artifacts}"
+export SCRAPE_TARGET="${SCRAPE_TARGET:-facebook}"
 
 mkdir -p "${SCRAPE_PROFILE_ROOT_DIR}" "${SCRAPE_ARTIFACT_ROOT_DIR}"
 
@@ -18,8 +19,8 @@ usage() {
 Facebook scraper worker container
 
 Commands:
-  login              Open Facebook in a persistent profile (use noVNC to sign in manually)
-  scrape <url>       Scrape one post URL with the saved profile (post-screenshot by default)
+  login              Open the selected platform in a persistent profile (use noVNC to sign in manually)
+  scrape <url>       Scrape one post/reel URL with the saved profile
   profile <url>      Scrape a profile + latest posts (SCRAPE_MAX_POSTS, default 20)
   watch [--once]         Comment watch (starts Chrome immediately)
   observe-watch [--once] Wait for you to open noVNC, then watch (see the post live)
@@ -30,7 +31,8 @@ Commands:
   help               Show this message
 
 Environment:
-  SCRAPE_SCRAPER              post-screenshot | post-engagement (default: post-screenshot)
+  SCRAPE_TARGET               facebook | instagram (default: facebook)
+  SCRAPE_SCRAPER              post-screenshot | post-engagement | reel-engagement (default: post-screenshot)
   SCRAPE_PROFILE_ROOT_DIR     Chrome profile root (default: /data/profiles)
   SCRAPE_WAIT_AFTER_NAVIGATION_MS
   WORKER_STAGGER_MAX_MS       Random delay before scrape (default: 20000)
@@ -109,9 +111,9 @@ run_vnc_doctor() {
 run_observe_login() {
   start_display
   wait_for_vnc_ready
-  echo "Profile directory: ${SCRAPE_PROFILE_ROOT_DIR}/facebook"
-  echo "Log into Facebook in the noVNC window, then press Enter here."
-  exec node /app/dist/main.js profile login --target facebook \
+  echo "Profile directory: ${SCRAPE_PROFILE_ROOT_DIR}/${SCRAPE_TARGET}"
+  echo "Log into ${SCRAPE_TARGET} in the noVNC window, then press Enter here."
+  exec node /app/dist/main.js profile login --target "${SCRAPE_TARGET}" \
     --chrome-executable "${SCRAPE_CHROME_EXECUTABLE}" \
     --profile-root-dir "${SCRAPE_PROFILE_ROOT_DIR}"
 }
@@ -119,10 +121,10 @@ run_observe_login() {
 run_login() {
   start_display
   print_novnc_observe_banner
-  echo "Profile directory: ${SCRAPE_PROFILE_ROOT_DIR}/facebook"
+  echo "Profile directory: ${SCRAPE_PROFILE_ROOT_DIR}/${SCRAPE_TARGET}"
   echo "Tip: use observe-login to connect noVNC before Chrome starts."
-  echo "Log into Facebook in the browser window, then press Enter in this terminal when finished."
-  exec node /app/dist/main.js profile login --target facebook \
+  echo "Log into ${SCRAPE_TARGET} in the browser window, then press Enter in this terminal when finished."
+  exec node /app/dist/main.js profile login --target "${SCRAPE_TARGET}" \
     --chrome-executable "${SCRAPE_CHROME_EXECUTABLE}" \
     --profile-root-dir "${SCRAPE_PROFILE_ROOT_DIR}"
 }
@@ -153,7 +155,7 @@ run_watch() {
 }
 
 run_scrape() {
-  local url="${1:?scrape requires a Facebook post URL}"
+  local url="${1:?scrape requires a post or reel URL}"
   local scraper="${SCRAPE_SCRAPER:-post-screenshot}"
   start_display
   local jitter
@@ -161,7 +163,7 @@ run_scrape() {
   echo "Staggering scrape start by ${jitter}ms to avoid synchronized bursts..."
   sleep "$(awk "BEGIN { printf \"%.3f\", ${jitter}/1000 }")"
   exec node /app/dist/main.js \
-    --target facebook \
+    --target "${SCRAPE_TARGET}" \
     --scraper "${scraper}" \
     --target-url "${url}" \
     --concurrency 1 \
@@ -171,9 +173,17 @@ run_scrape() {
 }
 
 run_profile() {
-  local url="${1:?profile requires a Facebook profile URL}"
+  local url="${1:?profile requires a profile URL}"
   start_display
-  exec node /app/dist/facebook/scrapers/profile/run.js "${url}"
+  exec node /app/dist/main.js \
+    --target "${SCRAPE_TARGET}" \
+    --scraper profile-scraper \
+    --target-url "${url}" \
+    --max-posts "${SCRAPE_MAX_POSTS:-20}" \
+    --concurrency 1 \
+    --chrome-executable "${SCRAPE_CHROME_EXECUTABLE}" \
+    --profile-root-dir "${SCRAPE_PROFILE_ROOT_DIR}" \
+    --artifact-root-dir "${SCRAPE_ARTIFACT_ROOT_DIR}"
 }
 
 cmd="${1:-help}"

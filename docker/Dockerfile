@@ -31,6 +31,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm ci
+RUN npx playwright install ffmpeg
 
 COPY tsconfig.json ./
 COPY src ./src

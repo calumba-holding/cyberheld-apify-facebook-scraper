@@ -1,11 +1,12 @@
-# Five isolated Facebook workers — one Chrome profile volume each, one noVNC port each.
-# Apple Silicon: Chrome .deb is amd64; keep platform line or builds will fail on arm64 hosts.
-x-common: &worker-common
+name: evidence-control
+
+x-worker-common: &worker-common
+  image: evidence-control-worker:local
   build:
     context: .
     dockerfile: docker/Dockerfile
   platform: linux/amd64
-  environment: &worker-env
+  environment: &worker-environment
     SCRAPE_PROFILE_ROOT_DIR: /data/profiles
     SCRAPE_CHROME_EXECUTABLE: /usr/bin/google-chrome-stable
     SCRAPE_ARTIFACT_ROOT_DIR: /data/artifacts
@@ -14,72 +15,103 @@ x-common: &worker-common
     WATCH_CONFIG: /data/watch-config/worker.json
 
 services:
+  control-api:
+    build:
+      context: ./central-api-router
+    ports:
+      - "8080:8080"
+    environment:
+      SCRAPER_ROOT: /workspace
+      JOB_STORE_DIR: /workspace/runs/api
+      PUBLIC_HOST: ${PUBLIC_HOST:-127.0.0.1}
+      PUBLIC_API_URL: http://${PUBLIC_HOST:-127.0.0.1}:8080
+      DASHBOARD_ORIGINS: http://127.0.0.1:3100,http://localhost:3100
+      DOCKER_COMPOSE_COMMAND: docker-compose
+      COMPOSE_PROJECT_NAME: evidence-control
+      SCRAPER_HOST_ROOT: ${SCRAPER_HOST_ROOT:-${PWD}}
+      PWD: ${SCRAPER_HOST_ROOT:-${PWD}}
+    volumes:
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /workspace
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ./platform/admin-ui
+    ports:
+      - "3100:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://${PUBLIC_HOST:-127.0.0.1}:8080
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      control-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
   fb-worker-1:
     <<: *worker-common
-    ports:
-      - "6081:6080"
-      - "5901:5900"
+    profiles: [workers]
+    ports: ["6081:6080"]
     environment:
-      <<: *worker-env
-      NOVNC_PORT: "6080"
-      NOVNC_PUBLIC_URL: "http://localhost:6081/vnc.html?autoconnect=1&resize=scale&reconnect=1"
+      <<: *worker-environment
+      NOVNC_PUBLIC_URL: http://localhost:6081/vnc.html
     volumes:
-      - ./docker/profiles/worker-1:/data/profiles
-      - ./docker/artifacts/worker-1:/data/artifacts
-      - ./farm/config/worker-1.json:/data/watch-config/worker.json:ro
+      - ${SCRAPER_HOST_ROOT:-.}/docker/profiles/worker-1:/data/profiles
+      - ${SCRAPER_HOST_ROOT:-.}/docker/artifacts/worker-1:/data/artifacts
 
   fb-worker-2:
     <<: *worker-common
-    ports:
-      - "6082:6080"
-      - "5902:5900"
+    profiles: [workers]
+    ports: ["6082:6080"]
     environment:
-      <<: *worker-env
-      NOVNC_PORT: "6080"
-      NOVNC_PUBLIC_URL: "http://localhost:6082/vnc.html"
+      <<: *worker-environment
+      NOVNC_PUBLIC_URL: http://localhost:6082/vnc.html
     volumes:
-      - ./docker/profiles/worker-2:/data/profiles
-      - ./docker/artifacts/worker-2:/data/artifacts
-      - ./farm/config/worker-2.json:/data/watch-config/worker.json:ro
+      - ${SCRAPER_HOST_ROOT:-.}/docker/profiles/worker-2:/data/profiles
+      - ${SCRAPER_HOST_ROOT:-.}/docker/artifacts/worker-2:/data/artifacts
 
   fb-worker-3:
     <<: *worker-common
-    ports:
-      - "6083:6080"
-      - "5903:5900"
+    profiles: [workers]
+    ports: ["6083:6080"]
     environment:
-      <<: *worker-env
-      NOVNC_PORT: "6080"
-      NOVNC_PUBLIC_URL: "http://localhost:6083/vnc.html"
+      <<: *worker-environment
+      NOVNC_PUBLIC_URL: http://localhost:6083/vnc.html
     volumes:
-      - ./docker/profiles/worker-3:/data/profiles
-      - ./docker/artifacts/worker-3:/data/artifacts
-      - ./farm/config/worker-3.json:/data/watch-config/worker.json:ro
+      - ${SCRAPER_HOST_ROOT:-.}/docker/profiles/worker-3:/data/profiles
+      - ${SCRAPER_HOST_ROOT:-.}/docker/artifacts/worker-3:/data/artifacts
 
   fb-worker-4:
     <<: *worker-common
-    ports:
-      - "6084:6080"
-      - "5904:5900"
+    profiles: [workers]
+    ports: ["6084:6080"]
     environment:
-      <<: *worker-env
-      NOVNC_PORT: "6080"
-      NOVNC_PUBLIC_URL: "http://localhost:6084/vnc.html"
+      <<: *worker-environment
+      NOVNC_PUBLIC_URL: http://localhost:6084/vnc.html
     volumes:
-      - ./docker/profiles/worker-4:/data/profiles
-      - ./docker/artifacts/worker-4:/data/artifacts
-      - ./farm/config/worker-4.json:/data/watch-config/worker.json:ro
+      - ${SCRAPER_HOST_ROOT:-.}/docker/profiles/worker-4:/data/profiles
+      - ${SCRAPER_HOST_ROOT:-.}/docker/artifacts/worker-4:/data/artifacts
 
   fb-worker-5:
     <<: *worker-common
-    ports:
-      - "6085:6080"
-      - "5905:5900"
+    profiles: [workers]
+    ports: ["6085:6080"]
     environment:
-      <<: *worker-env
-      NOVNC_PORT: "6080"
-      NOVNC_PUBLIC_URL: "http://localhost:6085/vnc.html"
+      <<: *worker-environment
+      NOVNC_PUBLIC_URL: http://localhost:6085/vnc.html
     volumes:
-      - ./docker/profiles/worker-5:/data/profiles
-      - ./docker/artifacts/worker-5:/data/artifacts
-      - ./farm/config/worker-5.json:/data/watch-config/worker.json:ro
+      - ${SCRAPER_HOST_ROOT:-.}/docker/profiles/worker-5:/data/profiles
+      - ${SCRAPER_HOST_ROOT:-.}/docker/artifacts/worker-5:/data/artifacts
