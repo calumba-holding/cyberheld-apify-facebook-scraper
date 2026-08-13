@@ -29,7 +29,11 @@ const launchBrowser = async (options: LaunchBrowserOptions): Promise<BrowserCont
 const openProfileLoginBrowser = async (options: ProfileLoginOptions): Promise<BrowserContext> => {
     const context = await launchBrowser({ ...options, browserSessionMode: 'persistent-profile' });
     const page = context.pages()[0] ?? await context.newPage();
-    await page.goto(getLoginUrl(), { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    try {
+        await page.goto(getLoginUrl(), { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    } catch (error) {
+        log.warning(`Instagram login page navigation did not settle; keeping the browser open for noVNC: ${error instanceof Error ? error.message : String(error)}`);
+    }
     return context;
 };
 

@@ -7,6 +7,8 @@ describe('matchesViewRepliesLabel', () => {
         expect(matchesViewRepliesLabel('View replies (37)')).toBe(true);
         expect(matchesViewRepliesLabel('View all 37 replies')).toBe(true);
         expect(matchesViewRepliesLabel('View 2 replies')).toBe(true);
+        expect(matchesViewRepliesLabel('View more replies')).toBe(true);
+        expect(matchesViewRepliesLabel('View previous replies')).toBe(true);
         expect(matchesViewRepliesLabel('Antworten anzeigen (12)')).toBe(true);
     });
 

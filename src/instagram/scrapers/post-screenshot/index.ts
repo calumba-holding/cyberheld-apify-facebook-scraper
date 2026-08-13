@@ -42,7 +42,7 @@ export const scrapePostScreenshot = async (
         finalUrl: page.url(),
         scrapedAt,
         screenshots: evidence.screenshots,
-        status: evidence.screenshots.length > 0 ? 'SUCCEEDED' : 'PARTIAL',
+        status: 'SUCCEEDED',
         captionPreview: evidence.captionPreview,
         engagementLabels: evidence.engagementLabels,
         commentsExpanded: evidence.commentsExpanded,

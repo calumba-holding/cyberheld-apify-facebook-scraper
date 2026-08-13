@@ -5,8 +5,42 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { scrapeProfile } from '../../src/instagram/scrapers/profile-scraper/index.js';
+import { collectInstagramProfilePosts } from '../../src/instagram/scrapers/profile-scraper/posts.js';
 
 test.describe('scrapeProfile', () => {
+    test('collects and deduplicates visible recent posts and reels', async ({ page }) => {
+        await page.setContent(`
+            <base href="https://www.instagram.com/" />
+            <main>
+                <a href="/p/POST1/"><img src="https://cdn.example/post.jpg" alt="Post caption" /></a>
+                <a href="/reel/REEL1/"><img src="https://cdn.example/reel.jpg" alt="Reel caption" /></a>
+                <a href="/p/POST1/"><img src="https://cdn.example/post.jpg" alt="Duplicate" /></a>
+            </main>
+        `);
+
+        const collection = await collectInstagramProfilePosts(page, 2);
+        const posts = collection.posts;
+
+        expect(posts).toHaveLength(2);
+        expect(posts.map((post) => ({ shortcode: post.shortcode, type: post.type }))).toEqual([
+            { shortcode: 'POST1', type: 'post' },
+            { shortcode: 'REEL1', type: 'reel' },
+        ]);
+    });
+
+    test('collects username-prefixed profile grid links', async ({ page }) => {
+        await page.setContent(`
+            <base href="https://www.instagram.com/" />
+            <main><a href="/thriftbylydia_/p/POST2/"><img alt="Thrift post" /></a></main>
+        `);
+
+        const collection = await collectInstagramProfilePosts(page, 1);
+
+        expect(collection.posts).toEqual([
+            expect.objectContaining({ shortcode: 'POST2', type: 'post' }),
+        ]);
+    });
+
     test('extracts visible Instagram profile metadata and captures a screenshot', async ({ page }) => {
         const artifactRootDir = await mkdtemp(join(tmpdir(), 'instagram-profile-test-'));
         try {

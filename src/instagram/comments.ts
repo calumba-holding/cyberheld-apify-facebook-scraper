@@ -19,6 +19,9 @@ const VIEW_REPLIES_EVAL_PATTERNS = [
     /^View all \d+ repl(?:y|ies)$/i,
     /^View repl(?:y|ies) \(\d+\)$/i,
     /^View \d+ repl(?:y|ies)$/i,
+    /^View more repl(?:y|ies)$/i,
+    /^View previous repl(?:y|ies)$/i,
+    /^Load more repl(?:y|ies)$/i,
     /^Alle \d+ Antworten anzeigen$/i,
     /^Antworten anzeigen \(\d+\)$/i,
     /^\d+ Antworten anzeigen$/i,
@@ -77,16 +80,20 @@ const clickNextViewRepliesButton = async (page: Page): Promise<boolean> => (
             return patterns.some((source) => new RegExp(source, 'i').test(normalized));
         };
 
-        const roots = Array.from(document.querySelectorAll('ul._a9ym, ul._a9z6, [role="dialog"]'));
+        const roots = Array.from(document.querySelectorAll('ul._a9ym, ul._a9z6, article, main, [role="dialog"]'));
         for (const root of roots) {
-            const buttons = Array.from(root.querySelectorAll<HTMLElement>('button, [role="button"]'));
-            for (const button of buttons) {
-                if (!button.offsetParent) continue;
-                const text = (button.textContent || '').replace(/\s+/g, ' ').trim();
+            const candidates = Array.from(root.querySelectorAll<HTMLElement>('button, [role="button"], span, div'));
+            for (const candidate of candidates) {
+                if (!candidate.offsetParent) continue;
+                const text = (candidate.textContent || '').replace(/\s+/g, ' ').trim();
                 if (!isViewReplies(text)) continue;
                 if (/^Hide /i.test(text) || /^Ausblenden/i.test(text)) continue;
-                button.scrollIntoView({ block: 'center', inline: 'nearest' });
-                button.click();
+                const clickable = candidate.closest<HTMLElement>('button, [role="button"], a') || candidate;
+                if (!clickable.offsetParent || clickable.dataset.scrapeRepliesExpanded === 'true') continue;
+                clickable.dataset.scrapeRepliesExpanded = 'true';
+                candidate.dataset.scrapeRepliesExpanded = 'true';
+                clickable.scrollIntoView({ block: 'center', inline: 'nearest' });
+                clickable.click();
                 return true;
             }
         }
@@ -165,9 +172,13 @@ const countRemainingViewReplies = async (page: Page): Promise<number> => (
         const isViewReplies = (text: string): boolean => (
             patterns.some((source) => new RegExp(source, 'i').test(text.replace(/\s+/g, ' ').trim()))
         );
-        return Array.from(document.querySelectorAll<HTMLElement>('ul._a9ym button, ul._a9ym [role="button"], ul._a9z6 button'))
-            .filter((button) => button.offsetParent && isViewReplies(button.textContent || ''))
-            .length;
+        const controls = new Set<HTMLElement>();
+        for (const candidate of Array.from(document.querySelectorAll<HTMLElement>('ul._a9ym button, ul._a9ym [role="button"], ul._a9ym span, ul._a9ym div, ul._a9z6 button, ul._a9z6 span, ul._a9z6 div, article button, article [role="button"], article span, [role="dialog"] button, [role="dialog"] [role="button"], [role="dialog"] span'))) {
+            if (!candidate.offsetParent || !isViewReplies(candidate.textContent || '')) continue;
+            const control = candidate.closest<HTMLElement>('button, [role="button"], a') || candidate;
+            if (control.dataset.scrapeRepliesExpanded !== 'true') controls.add(control);
+        }
+        return controls.size;
     }, VIEW_REPLIES_EVAL_PATTERNS.map((p) => p.source))
 );
 

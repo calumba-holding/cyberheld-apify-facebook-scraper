@@ -2,7 +2,7 @@
 
 ## Goal
 
-Scrape visible profile metadata for a single Instagram account and capture at least one screenshot artifact.
+Scrape visible profile metadata for a single Instagram account, capture screenshot evidence, and collect recent post/reel links.
 
 ## CLI
 
@@ -21,18 +21,16 @@ scrape --target instagram --scraper profile-scraper --target-url "https://www.in
 - verified / private indicators when visible
 - visible external links
 - screenshot artifact paths
+- up to `--max-posts` recent posts/reels (default 20)
+- recent item canonical URL, shortcode, type, thumbnail, and visible description
+- requested/extracted post counts and extraction errors
 
 ## Status rules
 
 ### `SUCCEEDED`
 
 - usable profile metadata was extracted
-- at least one screenshot artifact was captured
-
-### `PARTIAL`
-
-- usable profile metadata was extracted
-- but screenshot capture did not complete
+- unavailable screenshots or recent posts remain visible through artifact/count/error metadata rather than changing the terminal job status
 
 ### `FAILED`
 
@@ -43,3 +41,5 @@ scrape --target instagram --scraper profile-scraper --target-url "https://www.in
 
 - the scraper prefers visible header data and falls back to canonical/meta hints where needed
 - screenshot artifacts are written to a deterministic run-scoped path and referenced in the item output
+- the profile grid is virtualized; links are accumulated during every scroll pass and deduplicated
+- private profiles can succeed with metadata and zero recent posts when Instagram does not expose the grid

@@ -137,4 +137,29 @@ test.describe('extractInstagramComments', () => {
             }),
         ]));
     });
+
+    test('clicks a plain View all replies span under a comment', async ({ page }) => {
+        await page.setContent(`
+            <main>
+                <ul class="_a9ym"><li>
+                    <a href="/parent/">parent</a>
+                    <a href="/p/post-id/c/parent-2/"><time datetime="2026-05-26T04:17:35.000Z">6h</time></a>
+                    <span>Parent comment</span><button>Like</button><button>Reply</button>
+                    <div role="button" id="plain-control"><span>View all 1 reply</span></div>
+                    <ul class="_a9yo"><li id="plain-reply" hidden>
+                        <a href="/child/">child</a>
+                        <a href="/p/post-id/c/child-2/"><time datetime="2026-05-26T05:00:00.000Z">5h</time></a>
+                        <span>Child comment</span><button>Like</button><button>Reply</button>
+                    </li></ul>
+                </li></ul>
+            </main>
+            <script>document.getElementById('plain-control').onclick = () => document.getElementById('plain-reply').hidden = false;</script>
+        `);
+
+        const result = await extractInstagramComments(page, { maxPasses: 3, settleMs: 20, clickDelayMs: 20 });
+
+        expect(result.comments).toEqual(expect.arrayContaining([
+            expect.objectContaining({ id: 'child-2', parentId: 'parent-2', content: 'Child comment' }),
+        ]));
+    });
 });
