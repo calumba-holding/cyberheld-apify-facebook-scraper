@@ -42,12 +42,15 @@ If you are adding or changing a target or scraper, read these files first:
 - `docs/scrapers/add-a-scraper.md` — required workflow for new scrapers
 - `docs/scrapers/facebook-post-engagement.md` — current scraper as the reference example
 - `docs/scrapers/facebook-comment-reactions.md` — single-comment reaction scraper behavior and contract
+- `docs/scrapers/facebook-profile-scraper.md` — Facebook profile tabs and recent-post capture
+- `docs/scrapers/facebook-reel-engagement.md` — Facebook reel/watch extraction behavior
 - `docs/scrapers/instagram-post-engagement.md` — Instagram post engagement scraper behavior and contract
 - `docs/scrapers/instagram-profile-scraper.md` — Instagram profile scraper behavior and contract
 
 ### Operations docs
 
 - `docs/operations/parallel-evidence.md` — worker-pool RAM guidelines, recommended worker counts, and per-worker login setup for large batches
+- `docs/local-control-plane.md` — central API, dashboard, per-job Docker workers, authentication handoff, SQLite metadata, and result retrieval
 
 ### Automation docs
 
