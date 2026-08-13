@@ -140,7 +140,6 @@ export const buildPostEngagementResult = (
         timestamp: c.timestamp ?? '',
     }));
     const reactions: ReactionUser[] = raw.reactions;
-    const hasData = comments.length > 0 || reactions.length > 0 || Boolean(raw.postContent);
     return {
         kind: 'engagement',
         inputUrl,
@@ -156,6 +155,6 @@ export const buildPostEngagementResult = (
         comments,
         sourceVideo,
         selfHealing: selfHealing && selfHealing.length > 0 ? selfHealing : undefined,
-        status: hasData ? 'SUCCEEDED' : 'PARTIAL',
+        status: 'PARTIAL',
     };
 };

@@ -416,7 +416,7 @@ describe('facebook public post api payload parser', () => {
             },
             {
                 name: 'Linus Reactor',
-                profile_url: 'https://www.facebook.com/linus.reactor?ref=profile',
+                profile_url: 'https://www.facebook.com/linus.reactor',
                 reaction: 'Like',
             },
         ]);

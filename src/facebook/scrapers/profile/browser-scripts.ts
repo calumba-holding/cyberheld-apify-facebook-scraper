@@ -10,7 +10,7 @@ const SCOPE_SCRIPT = "scrape-scope";
 function resolveBrowserScriptPath(name: string): string {
   const candidates = [
     join(MODULE_DIR, "browser", `${name}.js`),
-    join(process.cwd(), "src/scrape/browser", `${name}.js`),
+    join(process.cwd(), "src/facebook/scrapers/profile/browser", `${name}.js`),
   ];
   for (const path of candidates) {
     if (existsSync(path)) return path;

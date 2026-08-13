@@ -3,6 +3,7 @@ import type {
     CommentReactionDetails,
     CommentReactionUser,
     EngagementScrapeResult,
+    ProfileScrapeResult,
     ReactionUser,
     ScreenshotScrapeResult,
     ScrapedComment,
@@ -17,7 +18,7 @@ export type {
     ScrapedComment,
 };
 
-export type FacebookScrapeResult = EngagementScrapeResult | ScreenshotScrapeResult;
+export type FacebookScrapeResult = EngagementScrapeResult | ProfileScrapeResult | ScreenshotScrapeResult;
 
 export type FacebookPlugin = TargetPlugin;
 

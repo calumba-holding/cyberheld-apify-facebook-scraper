@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 
 import { log } from '../../common/logger.js';
 import type { BrowserSessionMode, LocalFileArtifact, RunScrapeOptions } from '../../common/types.js';
-import { extractFacebookVideoId } from './url.js';
+import { extractFacebookVideoId, rewriteFacebookReelUrlToWatchUrl } from './url.js';
 
 export interface FacebookSourceVideoDownload {
     promise: Promise<LocalFileArtifact | undefined>;
@@ -117,7 +117,7 @@ export const startFacebookSourceVideoDownload = async (
     if (browserSessionMode === 'persistent-profile') {
         args.push('--cookies-from-browser', `chrome:${profileDir}`);
     }
-    args.push('-o', targetPath, finalUrl);
+    args.push('-o', targetPath, rewriteFacebookReelUrlToWatchUrl(finalUrl));
 
     const child = spawn('yt-dlp', args, {
         stdio: ['ignore', 'ignore', 'pipe'],

@@ -39,7 +39,8 @@ export const sanitizeFacebookPostUrl = (url: string): string => {
 
 export const extractCommentIdFromFacebookUrl = (url: string): string | null => {
     if (!URL.canParse(url)) return null;
-    const commentId = new URL(url).searchParams.get('comment_id')?.trim();
+    const parsed = new URL(url);
+    const commentId = (parsed.searchParams.get('reply_comment_id') ?? parsed.searchParams.get('comment_id'))?.trim();
     return commentId ? commentId : null;
 };
 

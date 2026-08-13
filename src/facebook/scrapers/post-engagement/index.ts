@@ -86,8 +86,8 @@ export const scrapePostEngagement = async (
             }
         }
 
-        if (options.browserSessionMode === 'public-session' && isFacebookVideoUrl(finalUrl)) {
-            log.info('Trying public Facebook video API extraction before DOM scraping.');
+        if (isFacebookVideoUrl(finalUrl)) {
+            log.info('Trying Facebook video API extraction before DOM scraping.');
             const apiResult = await tryExtractPublicVideoPostEngagement(page, inputUrl, finalUrl);
             if (apiResult) {
                 log.info(`Using public Facebook video API result with ${apiResult.comments.length} comments.`);
@@ -103,7 +103,7 @@ export const scrapePostEngagement = async (
         }
 
         // Path A: run saved script if available and not forcing regeneration
-        if (!options.regenerateScript) {
+        if (!options.regenerateScript && options.commentsOnly) {
             const sourceVideo = sourceVideoDownload ? await sourceVideoDownload.promise : undefined;
             const savedResult = await trySavedPostEngagementScript(
                 page,
@@ -128,11 +128,8 @@ export const scrapePostEngagement = async (
             const postContent = await extractPostContent(scope);
 
             log.info(`Page URL before comment scrape: ${page.url()}`);
-            const initialComments = await extractAllComments(page, scope);
             const commentFilter = await switchToAllComments(page, scope);
-            const domComments = commentFilter.shouldReloadComments
-                ? await extractAllComments(page, scope)
-                : initialComments;
+            const domComments = await extractAllComments(page, scope);
 
             // Some Facebook renders intermittently show 0 comments even when comments exist.
             // In watch mode, treat 0 as suspicious and do a single recovery reload.
@@ -145,11 +142,8 @@ export const scrapePostEngagement = async (
                 const retryPostContent = await extractPostContent(retryScope);
 
                 log.info(`Page URL before comment scrape (retry): ${page.url()}`);
-                const retryInitial = await extractAllComments(page, retryScope);
                 const retryFilter = await switchToAllComments(page, retryScope);
-                const retryDom = retryFilter.shouldReloadComments
-                    ? await extractAllComments(page, retryScope)
-                    : retryInitial;
+                const retryDom = await extractAllComments(page, retryScope);
 
                 if (retryDom.length > 0) {
                     log.info(`Recovery succeeded — extracted ${String(retryDom.length)} DOM comments after reload.`);
@@ -168,7 +162,7 @@ export const scrapePostEngagement = async (
 
         // Path B: standard DOM extraction (with recovery)
         const { scope, postContent, commentFilter, domComments } = await extractCommentsWithRecovery();
-        const relayComments = options.browserSessionMode === 'public-session' && isFacebookVideoUrl(finalUrl)
+        const relayComments = isFacebookVideoUrl(finalUrl)
             ? await extractVisiblePublicCommentsFromRelayStore(page)
             : [];
         const comments = mergeScrapedComments(domComments, relayComments);
@@ -187,7 +181,7 @@ export const scrapePostEngagement = async (
                 scrapedAt: new Date().toISOString(),
                 reactionCount: 0,
                 commentCount: comments.length,
-                commentsComplete: true,
+                commentsComplete: commentFilter.applied,
                 postReactionsComplete: false,
                 commentVisibilityComplete: commentFilter.applied,
                 postContent,
@@ -221,7 +215,7 @@ export const scrapePostEngagement = async (
             scrapedAt: new Date().toISOString(),
             reactionCount: reactionResult.visibleTotal ?? reactionResult.users.length,
             commentCount: comments.length,
-            commentsComplete: true,
+            commentsComplete: commentFilter.applied,
             postReactionsComplete: reactionResult.extracted,
             commentVisibilityComplete: commentFilter.applied,
             postContent,

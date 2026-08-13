@@ -166,8 +166,10 @@ export const switchToAllComments = async (page: Page, scope: Locator = page.loca
         const filterButtons = scope.locator(FILTER_BUTTON_SELECTOR);
         const button = filterButtons.nth(candidate.index);
         await button.scrollIntoViewIfNeeded().catch(() => undefined);
-        await button.click({ force: true, delay: 120 }).catch(() => undefined);
-        await clickPoint(page, candidate);
+        const clicked = await button.click({ force: true, delay: 120, timeout: 3_000 })
+            .then(() => true)
+            .catch(() => false);
+        if (!clicked) await clickPoint(page, candidate);
         await page.waitForTimeout(450);
 
         const option = await locateAllCommentsOption(page, candidate);
@@ -192,8 +194,8 @@ export const switchToAllComments = async (page: Page, scope: Locator = page.loca
             return { applied: true, shouldReloadComments: false, state: 'not_available' };
         }
 
-        log.info('No comments filter or visible comments were found. Treating the post as having no visible comments.');
-        return { applied: true, shouldReloadComments: false, state: 'not_available' };
+        log.warning('No comments filter or visible comments were found. Comment completeness is unknown.');
+        return { applied: false, shouldReloadComments: false, state: 'not_available' };
     }
 
     log.warning('Failed to switch the filter to "All comments".');

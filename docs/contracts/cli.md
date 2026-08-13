@@ -20,8 +20,10 @@ node dist/main.js [scrape] profile path --target <target>
 
 - target: `facebook`
 - scraper: `post-engagement`
+- scraper: `reel-engagement`
 - scraper: `comment-reactions`
 - scraper: `post-screenshot`
+- scraper: `profile-scraper`
 - target: `instagram`
 - scraper: `post-engagement`
 - scraper: `profile-scraper`
@@ -56,6 +58,7 @@ node dist/main.js [scrape] profile path --target <target>
 - `--worker-start-delay-ms <ms>` (stagger delay between worker starts; default 2000)
 - `--max-retries <n>` (per-item retry attempts; default 2, max 5)
 - `--item-delay-ms <ms>` (delay before scraping each item, per tab; default 0)
+- `--max-posts <n>` (profile scraper recent-post limit; default 20, max 100)
 - `--verbose`
 - `-h`, `--help`
 - `--version`

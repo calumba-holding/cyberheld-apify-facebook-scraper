@@ -50,6 +50,7 @@ Options:
                              Stagger delay between worker starts (default: 2000)
   --max-retries <n>          Per-item retry attempts on transient failure or zero screenshots (default: 2, max: 5)
   --item-delay-ms <ms>       Delay before scraping each item, per tab (default: 0)
+  --max-posts <n>            Profile scraper recent-post limit (default: 20, max: 100)
   --verbose                  Print debug logs to stderr
   -h, --help                 Show help
   --version                  Show version
@@ -76,6 +77,7 @@ Examples:
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/..." --guest-session
   scrape --target facebook --scraper post-engagement --target-url "https://www.facebook.com/share/v/..." --no-download
   scrape --target facebook --scraper comment-reactions --target-url "https://www.facebook.com/...?...&comment_id=123456"
+  scrape --target facebook --scraper profile-scraper --target-url "https://www.facebook.com/example" --max-posts 20
   scrape --target instagram --scraper post-engagement --target-url "https://www.instagram.com/p/..."
   scrape --target instagram --scraper profile-scraper --target-url "https://www.instagram.com/example/"
   scrape --target instagram --scraper post-screenshot --target-url "https://www.instagram.com/reel/SHORTCODE/"

@@ -24,6 +24,7 @@ export interface RunCliOptions {
     workerStartDelayMs: number;
     maxRetries: number;
     itemDelayMs: number;
+    maxPosts: number;
 }
 
 export interface ProfileLoginCliOptions {

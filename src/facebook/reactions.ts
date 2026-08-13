@@ -15,9 +15,12 @@ export interface PostReactionExtractionResult {
 type ReactionBreakdown = {
     reaction: string;
     count: number;
+    tabIndex?: number;
 };
 
 const REACTION_NAME_ALIASES: Record<string, string> = {
+    all: 'All',
+    alle: 'All',
     like: 'Like',
     'gefällt mir': 'Like',
     love: 'Love',
@@ -99,7 +102,13 @@ const collectReactionTabs = async (modal: Locator): Promise<ReactionBreakdown[]>
         return nodes.map((node) => node.getAttribute('aria-label') || '').filter(Boolean);
     });
 
-    const tabs = labels.map((label) => parseReactionTab(label)).filter((tab): tab is ReactionBreakdown => Boolean(tab));
+    const tabs: ReactionBreakdown[] = labels
+        .map((label, tabIndex): ReactionBreakdown | null => {
+            const parsed = parseReactionTab(label);
+            return parsed ? { ...parsed, tabIndex } : null;
+        })
+        .filter((tab): tab is ReactionBreakdown => Boolean(tab))
+        .filter((tab) => tab.reaction !== 'All');
     return tabs.length ? tabs : [];
 };
 
@@ -127,8 +136,15 @@ const collectUsersFromCurrentTab = async (modal: Locator, reaction: string): Pro
     }, reaction);
 };
 
-const collectUsersForReaction = async (page: Page, modal: Locator, reaction: string): Promise<ReactionUser[]> => {
-    const tab = modal.locator(`[role="tab"][aria-label*="reacted with ${reaction}"]`).first();
+const collectUsersForReaction = async (
+    page: Page,
+    modal: Locator,
+    reaction: string,
+    tabIndex?: number,
+): Promise<ReactionUser[]> => {
+    const tab = tabIndex === undefined
+        ? modal.locator(`[role="tab"][aria-label*="reacted with ${reaction}"]`).first()
+        : modal.locator('[role="tab"]').nth(tabIndex);
     if (await tab.isVisible().catch(() => false)) {
         for (let attempt = 0; attempt < 3; attempt++) {
             await tab.scrollIntoViewIfNeeded().catch(() => undefined);
@@ -179,10 +195,15 @@ const extractUsersFromModal = async (page: Page, modal: Locator, fallbackReactio
     const users: ReactionUser[] = [];
 
     for (const tab of breakdown) {
-        users.push(...await collectUsersForReaction(page, modal, tab.reaction));
+        users.push(...await collectUsersForReaction(page, modal, tab.reaction, tab.tabIndex));
     }
 
-    return users;
+    const unique = new Map<string, ReactionUser>();
+    for (const user of users) {
+        const profileUrl = normalizeProfileUrl(user.profile_url);
+        if (!unique.has(profileUrl)) unique.set(profileUrl, { ...user, profile_url: profileUrl });
+    }
+    return [...unique.values()];
 };
 
 export const extractAllReactions = async (
@@ -221,7 +242,13 @@ export const extractAllReactions = async (
 
         const reactions = await extractUsersFromModal(page, modal, primary.reaction);
         log.info(`Done. Extracted ${reactions.length} post reaction users.`);
-        return { users: reactions, extracted: true, visibleTotal };
+        const countMatchesVisibleTotal = reactions.length <= visibleTotal;
+        if (!countMatchesVisibleTotal) {
+            log.warning(
+                `Extracted ${String(reactions.length)} unique reactor rows for displayed total ${String(visibleTotal)}. Marking extraction incomplete.`,
+            );
+        }
+        return { users: reactions, extracted: countMatchesVisibleTotal, visibleTotal };
     } finally {
         await closePostReactionModal(page, modal);
     }

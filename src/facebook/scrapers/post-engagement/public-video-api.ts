@@ -115,7 +115,7 @@ const extractCommentIntentSelection = (payload: string): CommentIntentSelection 
 
 const extractPublicVideoGraphqlContext = async (page: Page, finalUrl: string): Promise<PublicVideoGraphqlContext | null> => {
     const payload = await page.evaluate((url) => {
-        interface RelaySource { get(id: string): unknown; }
+        interface RelaySource { get(id: string): unknown; getRecordIDs?(): string[]; }
         interface RelayStore { getSource(): RelaySource; }
         interface RelayEnvironment { getStore(): RelayStore; }
 
@@ -129,10 +129,18 @@ const extractPublicVideoGraphqlContext = async (page: Page, finalUrl: string): P
         const videoId = new URL(url).searchParams.get('v') ?? url.match(/\/videos\/([^/?#]+)/i)?.[1] ?? url.match(/\/reel\/([^/?#]+)/i)?.[1] ?? null;
         if (!source || !videoId) return null;
 
-        const record = asObject(source.get(videoId));
-        const feedbackId = asString(asObject(record?.feedback)?.__ref);
-        const storyId = asString(record?.id);
-        return storyId && feedbackId ? { storyId, feedbackId } : null;
+        const candidateIds = [videoId, ...(source.getRecordIDs?.() ?? [])];
+        for (const candidateId of candidateIds) {
+            const record = asObject(source.get(candidateId));
+            if (!record) continue;
+            const legacyId = asString(record.legacy_fbid);
+            const canonicalUrl = asString(record.url) ?? asString(record.canonical_url) ?? '';
+            const recordId = asString(record.id);
+            if (candidateId !== videoId && legacyId !== videoId && recordId !== videoId && !canonicalUrl.includes(videoId)) continue;
+            const feedbackId = asString(asObject(record.feedback)?.__ref);
+            if (recordId && feedbackId) return { storyId: recordId, feedbackId };
+        }
+        return null;
     }, finalUrl);
 
     return payload && typeof payload.storyId === 'string' && typeof payload.feedbackId === 'string' ? payload : null;

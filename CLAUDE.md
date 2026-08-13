@@ -14,8 +14,10 @@ This repository is a local CLI scraper.
 ## Current supported target/scraper
 
 - `facebook` + `post-engagement`
+- `facebook` + `reel-engagement`
 - `facebook` + `comment-reactions`
 - `facebook` + `post-screenshot`
+- `facebook` + `profile-scraper`
 - `instagram` + `post-engagement`
 - `instagram` + `profile-scraper`
 - `instagram` + `post-screenshot`

@@ -25,17 +25,10 @@ const resolveCommentVisibilityComplete = (result: EngagementScrapeResult): boole
     return result.commentVisibilityComplete ?? resolveCommentsComplete(result);
 };
 
-const toStatus = (result: ScrapeResult): 'SUCCEEDED' | 'PARTIAL' => {
-    if (result.status) return result.status;
-    if (result.kind === 'profile' || result.kind === 'screenshot') {
-        return result.screenshots.length > 0 ? 'SUCCEEDED' : 'PARTIAL';
-    }
-
-    const commentsComplete = resolveCommentsComplete(result);
-    const postReactionsComplete = resolvePostReactionsComplete(result);
-    if (commentsComplete && postReactionsComplete) return 'SUCCEEDED';
-    return 'PARTIAL';
-};
+// A returned ScrapeResult is usable evidence. Completeness is reported separately
+// through completeness flags, profile counts, errors, and artifacts. Only thrown
+// scraper failures are represented as FAILED by buildFailedOutput.
+const toStatus = (_result: ScrapeResult): 'SUCCEEDED' => 'SUCCEEDED';
 
 const buildEngagementArtifacts = (result: EngagementScrapeResult): ScrapeItemOutput['artifacts'] | undefined => {
     const artifacts: ScrapeItemOutput['artifacts'] = {};

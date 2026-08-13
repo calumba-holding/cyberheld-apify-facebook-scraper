@@ -3,11 +3,24 @@ import type { Locator, Page } from 'playwright';
 export const normalizeProfileUrl = (rawUrl: string): string => {
     try {
         const url = new URL(rawUrl);
-        url.searchParams.delete('__tn__');
-        for (const key of Array.from(url.searchParams.keys())) {
-            if (key.startsWith('__cft__')) url.searchParams.delete(key);
+        url.hash = '';
+        url.hostname = 'www.facebook.com';
+
+        const storyOwnerId = url.pathname.match(/^\/stories\/(\d+)/)?.[1];
+        if (storyOwnerId) {
+            return `https://www.facebook.com/profile.php?id=${storyOwnerId}`;
         }
-        return url.toString();
+
+        if (url.pathname.toLowerCase() === '/profile.php') {
+            const profileId = url.searchParams.get('id');
+            return profileId
+                ? `https://www.facebook.com/profile.php?id=${profileId}`
+                : 'https://www.facebook.com/profile.php';
+        }
+
+        const firstPath = url.pathname.split('/').filter(Boolean)[0];
+        if (firstPath) return `https://www.facebook.com/${firstPath}`;
+        return 'https://www.facebook.com/';
     } catch {
         return rawUrl;
     }

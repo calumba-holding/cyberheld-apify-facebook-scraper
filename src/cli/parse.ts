@@ -69,6 +69,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
     let workerStartDelayMs = parseInteger(process.env.SCRAPE_WORKER_START_DELAY_MS ?? '2000', 'workerStartDelayMs', 0, 60000);
     let maxRetries = parseInteger(process.env.SCRAPE_MAX_RETRIES ?? '2', 'maxRetries', 0, 5);
     let itemDelayMs = parseInteger(process.env.SCRAPE_ITEM_DELAY_MS ?? '0', 'itemDelayMs', 0, 60000);
+    let maxPosts = parseInteger(process.env.SCRAPE_MAX_POSTS ?? '20', 'maxPosts', 1, 100);
 
     for (let index = 0; index < argv.length; index++) {
         const arg = argv[index];
@@ -160,6 +161,10 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
                 itemDelayMs = parseInteger(takeValue(argv, index, '--item-delay-ms'), 'itemDelayMs', 0, 60000);
                 index += 1;
                 break;
+            case '--max-posts':
+                maxPosts = parseInteger(takeValue(argv, index, '--max-posts'), 'maxPosts', 1, 100);
+                index += 1;
+                break;
             case '--artifact-root-dir':
                 artifactRootDir = takeValue(argv, index, '--artifact-root-dir');
                 index += 1;
@@ -207,6 +212,7 @@ const parseRunArgs = (argv: string[]): RunCliOptions => {
         workerStartDelayMs,
         maxRetries,
         itemDelayMs,
+        maxPosts,
     };
 };
 

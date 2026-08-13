@@ -7,6 +7,9 @@ import { slowlyScrollToTop } from '../common/video-context.js';
 import { COMMENT_REACTIONS_SCRAPER, scrapeCommentReactions } from './scrapers/comment-reactions/index.js';
 import { POST_ENGAGEMENT_SCRAPER, scrapePostEngagement } from './scrapers/post-engagement/index.js';
 import { POST_SCREENSHOT_SCRAPER, scrapePostScreenshot } from './scrapers/post-screenshot/index.js';
+import { FACEBOOK_PROFILE_SCRAPER, scrapeFacebookProfile, selectLatestPosts } from './scrapers/profile/index.js';
+import { REEL_ENGAGEMENT_SCRAPER, resolveReelEngagementUrl } from './scrapers/reel-engagement/index.js';
+import { captureScreenshot } from '../common/screenshot-artifacts.js';
 import type { GraphqlRequestTemplate } from './scrapers/post-engagement/public-post-api-graphql.js';
 import { tryOpenFacebookPublicPostViaPageRoot } from './scrapers/post-engagement/public-post-api.js';
 import { assertFacebookAuthenticatedContext } from './session.js';
@@ -57,9 +60,7 @@ export const runPostEngagementScrapeOnPage = async (
     const resolvedTargetUrl = await resolveFacebookPostUrl(targetUrl);
     if (resolvedTargetUrl !== targetUrl) log.info(`Resolved shared URL to: ${resolvedTargetUrl}`);
 
-    const resolvedEntryUrl = options.browserSessionMode === 'public-session'
-        ? rewriteFacebookReelUrlToWatchUrl(resolvedTargetUrl)
-        : resolvedTargetUrl;
+    const resolvedEntryUrl = rewriteFacebookReelUrlToWatchUrl(resolvedTargetUrl);
 
     await page.goto(resolvedEntryUrl, {
         waitUntil: 'domcontentloaded',
@@ -118,12 +119,58 @@ const runScrape = async (
             return scrapeResult;
         }
 
+        if (scraper === REEL_ENGAGEMENT_SCRAPER) {
+            const scrapeResult = await runPostEngagementScrapeOnPage(page, resolveReelEngagementUrl(targetUrl), options);
+            await closePage();
+            return scrapeResult;
+        }
+
+        if (scraper === FACEBOOK_PROFILE_SCRAPER) {
+            const profileResult = await scrapeFacebookProfile(page, targetUrl, {
+                navigationTimeoutMs: options.requestTimeoutSecs * 1000,
+                waitAfterNavigationMs: options.waitAfterNavigationMs,
+                maxPosts: options.maxPosts ?? 20,
+            });
+            const recentPosts = selectLatestPosts(profileResult);
+            const screenshot = await captureScreenshot(page, {
+                ...options,
+                label: 'profile',
+            });
+            const profile = {
+                url: profileResult.profileUrl,
+                username: profileResult.header.username,
+                displayName: profileResult.header.displayName,
+                bio: profileResult.header.intro ?? profileResult.header.metaDescription,
+                profilePictureUrl: profileResult.header.profilePictureUrl,
+                externalLinks: profileResult.overview.links.map((link) => link.href),
+                counts: {},
+                indicators: { verified: false, private: false },
+                overview: profileResult.overview,
+                tabs: profileResult.tabs,
+                moreSections: profileResult.moreSections,
+                recentPosts,
+                requestedPostCount: options.maxPosts ?? 20,
+                extractedPostCount: recentPosts.length,
+                errors: profileResult.errors,
+            };
+            await closePage();
+            return {
+                kind: 'profile',
+                inputUrl: targetUrl,
+                finalUrl: profileResult.profileUrl,
+                scrapedAt: profileResult.scrapedAt,
+                status: recentPosts.length >= (options.maxPosts ?? 20) && profileResult.errors.length === 0
+                    ? 'SUCCEEDED'
+                    : 'PARTIAL',
+                profile,
+                screenshots: [screenshot],
+            };
+        }
+
         const resolvedTargetUrl = await resolveFacebookPostUrl(targetUrl);
         if (resolvedTargetUrl !== targetUrl) log.info(`Resolved shared URL to: ${resolvedTargetUrl}`);
 
-        const resolvedEntryUrl = options.browserSessionMode === 'public-session'
-            ? rewriteFacebookReelUrlToWatchUrl(resolvedTargetUrl)
-            : resolvedTargetUrl;
+        const resolvedEntryUrl = rewriteFacebookReelUrlToWatchUrl(resolvedTargetUrl);
         if (resolvedEntryUrl !== resolvedTargetUrl) {
             log.info(`Rewrote public Facebook reel URL to watch URL: ${resolvedEntryUrl}`);
         }
@@ -227,7 +274,7 @@ const runScrape = async (
 
 export const facebookPlugin: FacebookPlugin = {
     target: 'facebook',
-    scrapers: [POST_ENGAGEMENT_SCRAPER, POST_SCREENSHOT_SCRAPER, COMMENT_REACTIONS_SCRAPER],
+    scrapers: [POST_ENGAGEMENT_SCRAPER, REEL_ENGAGEMENT_SCRAPER, POST_SCREENSHOT_SCRAPER, COMMENT_REACTIONS_SCRAPER, FACEBOOK_PROFILE_SCRAPER],
     getProfileDir,
     launchBrowser,
     openProfileLoginBrowser,

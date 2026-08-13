@@ -3,7 +3,7 @@ import type { Page } from "playwright";
 import { runBrowserScript } from "./browser-scripts.js";
 import { extractCurrentPage } from "./extract-page.js";
 import { navigateToProfileTab, type ProfileTabTarget } from "./navigate.js";
-import { expandTruncatedPosts, scrollUntilPostsLoaded } from "./scroll-posts.js";
+import { expandTruncatedPosts } from "./scroll-posts.js";
 import type { ProfilePost, TabExtract } from "./types.js";
 
 const DEFAULT_POST_LIMIT = 20;
@@ -34,18 +34,33 @@ export async function scrapePostsSection(
   await page.waitForTimeout(2_000);
 
   try {
-    const scrollResult = await scrollUntilPostsLoaded(page, {
-      targetCount: postLimit + 5,
-      maxRounds: 45,
-      stableRoundsRequired: 3,
-      pauseMs: 1_800,
-    });
+    const collected = new Map<string, ProfilePost>();
+    let stableRounds = 0;
+    let previousCount = 0;
+    let rounds = 0;
+    let articleCount = 0;
 
-    await expandTruncatedPosts(page);
+    for (let round = 0; round < 45 && collected.size < postLimit; round++) {
+      rounds = round + 1;
+      await expandTruncatedPosts(page);
+      const visiblePosts = await extractPostsFromPage(page, postLimit);
+      for (const post of visiblePosts) {
+        const key = post.permalink
+          ?? `${post.authorUrl ?? post.authorName ?? "unknown"}|${post.timestamp ?? ""}|${post.text?.slice(0, 160) ?? post.rawText?.slice(0, 160) ?? ""}`;
+        if (!collected.has(key)) collected.set(key, post);
+      }
+      articleCount = await page.locator('[role="article"]').count();
+      process.stderr.write(`  Feed round ${round + 1}/45: ${collected.size} unique post(s), ${articleCount} article(s) mounted\n`);
+      stableRounds = collected.size === previousCount ? stableRounds + 1 : 0;
+      previousCount = collected.size;
+      if (stableRounds >= 5) break;
+      await page.evaluate(() => window.scrollTo(0, Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)));
+      await page.waitForTimeout(1_800);
+    }
 
-    const posts = await extractPostsFromPage(page, postLimit);
+    const posts = [...collected.values()].slice(0, postLimit).map((post, index) => ({ ...post, index: index + 1 }));
     process.stderr.write(
-      `  Extracted ${posts.length} post(s) (${scrollResult.rounds} scroll rounds, ${scrollResult.articleCount} articles seen)\n`,
+      `  Extracted ${posts.length} unique post(s) (${rounds} scroll rounds, ${articleCount} articles currently mounted)\n`,
     );
 
     const pageExtract = await extractCurrentPage(page, tab.name);
@@ -53,7 +68,7 @@ export async function scrapePostsSection(
     return {
       ...pageExtract,
       posts,
-      postScrollRounds: scrollResult.rounds,
+      postScrollRounds: rounds,
       postsTarget: postLimit,
     };
   } catch (error) {

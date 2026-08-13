@@ -21,7 +21,7 @@ describe('registry', () => {
 
     it('returns the facebook plugin when the target is facebook', () => {
         expect(getTargetPlugin('facebook').target).toBe('facebook');
-        expect(getTargetPlugin('facebook').scrapers).toEqual(['post-engagement', 'post-screenshot', 'comment-reactions']);
+        expect(getTargetPlugin('facebook').scrapers).toEqual(['post-engagement', 'reel-engagement', 'post-screenshot', 'comment-reactions', 'profile-scraper']);
     });
 
     it('returns the instagram plugin when the target is instagram', () => {
@@ -30,7 +30,7 @@ describe('registry', () => {
     });
 
     it('declares supported scrapers on each target plugin', () => {
-        expect(getTargetPlugin('facebook').scrapers).toEqual(['post-engagement', 'post-screenshot', 'comment-reactions']);
+        expect(getTargetPlugin('facebook').scrapers).toEqual(['post-engagement', 'reel-engagement', 'post-screenshot', 'comment-reactions', 'profile-scraper']);
         expect(getTargetPlugin('instagram').scrapers).toEqual(['post-engagement', 'post-screenshot', 'profile-scraper']);
     });
 });

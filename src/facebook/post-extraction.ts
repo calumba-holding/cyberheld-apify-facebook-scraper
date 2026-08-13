@@ -23,7 +23,12 @@ const compareCandidates = (left: PostContentCandidate, right: PostContentCandida
 };
 
 export const extractPostContent = async (scope: Locator, anchorY?: number): Promise<string | undefined> => {
-    const messages = scope.locator('[data-ad-preview="message"]');
+    const messages = scope.locator([
+        '[data-ad-preview="message"]',
+        '[data-ad-rendering-role="story_message"]',
+        '[data-ad-comet-preview="message"]',
+        '[role="main"] [dir="auto"]',
+    ].join(', '));
     const messageCount = await messages.count();
     const candidates: PostContentCandidate[] = [];
 
@@ -32,7 +37,7 @@ export const extractPostContent = async (scope: Locator, anchorY?: number): Prom
         if (!(await message.isVisible().catch(() => false))) continue;
 
         const text = cleanText((await message.textContent().catch(() => '')) || '');
-        if (text.length <= 20) continue;
+        if (text.length <= 2 || text.length > 5000) continue;
 
         const box = await message.boundingBox();
         if (!box) continue;

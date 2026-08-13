@@ -33,24 +33,26 @@ export const ensureCommentsAreVisible = async (page: Page, scope: Locator, comme
 
 export const clickCommentExpansionButtons = async (page: Page, scope: Locator): Promise<boolean> => {
     const buttons = scope.locator('[role="button"]');
-    let clicked = false;
+    const count = await buttons.count();
 
-    for (let index = 0; index < await buttons.count(); index++) {
+    for (let index = 0; index < count; index++) {
         const button = buttons.nth(index);
         if (!(await button.isVisible().catch(() => false))) continue;
 
-        const text = (await button.textContent().catch(() => '') || '').trim();
-        const normalized = text.toLowerCase();
-        const isExpansionButton = text === 'View more comments'
-            || text === 'View more replies'
-            || (text.startsWith('View') && (normalized.includes('reply') || normalized.includes('repl')));
+        const text = [
+            await button.textContent().catch(() => ''),
+            await button.getAttribute('aria-label').catch(() => ''),
+        ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+        const normalized = text.toLocaleLowerCase();
+        const isExpansionButton = /(?:view|see|show).*(?:comment|repl)|(?:more|previous).*(?:comment|repl)|(?:weitere|mehr|vorherige).*(?:kommentar|antwort)|(?:kommentar|antwort).*(?:anzeigen|ansehen)/i.test(normalized);
         if (!isExpansionButton) continue;
 
         await button.scrollIntoViewIfNeeded().catch(() => undefined);
-        await button.click({ force: true }).catch(() => undefined);
+        const clicked = await button.click({ force: true, timeout: 3_000 }).then(() => true).catch(() => false);
+        if (!clicked) continue;
         await page.waitForTimeout(500);
-        clicked = true;
+        return true;
     }
 
-    return clicked;
+    return false;
 };

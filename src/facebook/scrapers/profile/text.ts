@@ -18,7 +18,13 @@ export const extractUsernameFromUrl = (url: string): string | undefined => {
 };
 
 export const profileBaseUrl = (url: string): string => {
+  const parsed = new URL(url);
   const username = extractUsernameFromUrl(url);
   if (!username) throw new Error(`Could not resolve profile base URL from ${url}`);
+  if (username.toLowerCase() === "profile.php") {
+    const id = parsed.searchParams.get("id");
+    if (!id) throw new Error(`Could not resolve profile id from ${url}`);
+    return `https://www.facebook.com/profile.php?id=${encodeURIComponent(id)}`;
+  }
   return `https://www.facebook.com/${username}`;
 };

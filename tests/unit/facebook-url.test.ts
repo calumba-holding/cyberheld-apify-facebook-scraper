@@ -16,6 +16,12 @@ describe('facebook url helpers', () => {
         expect(extractCommentIdFromFacebookUrl('https://www.facebook.com/post?comment_id=12345')).toBe('12345');
     });
 
+    it('prefers reply_comment_id over its parent comment_id', () => {
+        expect(extractCommentIdFromFacebookUrl(
+            'https://www.facebook.com/post?comment_id=parent&reply_comment_id=reply',
+        )).toBe('reply');
+    });
+
     it('returns null when comment_id is missing', () => {
         expect(extractCommentIdFromFacebookUrl('https://www.facebook.com/post')).toBeNull();
     });

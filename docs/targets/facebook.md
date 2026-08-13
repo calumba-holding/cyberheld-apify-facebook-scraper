@@ -2,11 +2,16 @@
 
 ## Scope
 
-Facebook is currently the only supported target.
+Facebook is one of the supported targets.
 
 Current scrapers:
 - `post-engagement`
+- `reel-engagement`
 - `comment-reactions`
+- `post-screenshot`
+- `profile-scraper`
+
+The profile scraper visits the profile shell and discovered top-level tabs, retains About/overview data, visits More-menu sections, and requests the latest 20 posts by default (`--max-posts`).
 
 ## Behavioral rules
 

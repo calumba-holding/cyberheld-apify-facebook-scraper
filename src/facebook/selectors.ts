@@ -1,10 +1,17 @@
 export const PROFILE_PICTURE_SELECTOR = 'a[aria-label^="Profile picture of"]';
 
-export const COMMENT_SELECTOR = 'div[role="article"][aria-label^="Comment by"], div[role="article"][aria-label^="Reply by"]';
+export const COMMENT_SELECTOR = [
+    'div[role="article"][aria-label^="Comment by"]',
+    'div[role="article"][aria-label^="Reply by"]',
+    'div[role="article"][aria-label^="Kommentar von"]',
+    'div[role="article"][aria-label^="Antwort von"]',
+    'div[role="article"]:has(a[href*="comment_id="])',
+    'div[role="article"]:has(a[href*="reply_comment_id="])',
+].join(', ');
 export const COMMENTS_HEADING_SELECTOR = 'h2, h3';
 export const COMMENT_ARTICLE_SELECTOR = COMMENT_SELECTOR;
 export const COMMENT_HEADING_SELECTOR = 'h1, h2, h3, [role="heading"]';
-export const FILTER_BUTTON_SELECTOR = '[role="button"][aria-haspopup="menu"]';
+export const FILTER_BUTTON_SELECTOR = '[role="button"][aria-haspopup="menu"], [role="button"][aria-expanded], [role="button"]';
 
 export const POST_REACTION_BUTTON_SELECTOR = [
     '[role="button"][aria-label*=":"][aria-label*=" people"]',

@@ -107,7 +107,11 @@ export const findTargetPostRoot = async (page: Page, targetUrl: string): Promise
             .filter((candidate) => candidate.permalinkMatches > 0 && (
                 isWatchVideoTarget
                     ? (candidate.commentCount > 0 || candidate.headingCount > 0 || candidate.videoCount > 0)
-                    : (candidate.messageCount > 0 && candidate.commentCount > 0)
+                    : (candidate.messageCount > 0 && (
+                        candidate.commentCount > 0
+                        || candidate.headingCount > 0
+                        || candidate.reactionCount > 0
+                    ))
             ));
 
         divCandidates.sort((left, right) => {

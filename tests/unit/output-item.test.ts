@@ -88,10 +88,10 @@ describe('buildSuccessOutput', () => {
         }]);
     });
 
-    it('returns PARTIAL when post reaction extraction did not complete', () => {
+    it('returns SUCCEEDED with completeness metadata when post reaction extraction did not complete', () => {
         const output = buildSuccessOutput(buildResult({ reactionCount: 0, reactions: [], postReactionsComplete: false }), 'job-2b');
 
-        expect(output.scrape.status).toBe('PARTIAL');
+        expect(output.scrape.status).toBe('SUCCEEDED');
         expect(output.completeness.postReactionsExtracted).toBe(false);
         expect(output.post.reactions).toEqual([]);
     });

@@ -141,6 +141,25 @@ describe('parseCliArgs', () => {
         }
     });
 
+    it('accepts the facebook profile-scraper and max-posts option', () => {
+        const parsed = parseCliArgs([
+            '--target',
+            'facebook',
+            '--scraper',
+            'profile-scraper',
+            '--target-url',
+            'https://www.facebook.com/example-profile/',
+            '--max-posts',
+            '20',
+        ]);
+
+        expect(parsed.kind).toBe('run');
+        if (parsed.kind === 'run') {
+            expect(parsed.options.scraper).toBe('profile-scraper');
+            expect(parsed.options.maxPosts).toBe(20);
+        }
+    });
+
     it('returns run options from environment defaults when optional flags are omitted', () => {
         process.env.SCRAPE_CONCURRENCY = '3';
         process.env.SCRAPE_SCREEN_VIDEO = 'true';
@@ -241,7 +260,7 @@ describe('parseCliArgs', () => {
             'facebook',
             '--scraper',
             'post-engagement',
-        ])).toThrowError('Missing required flag: --target-url');
+        ])).toThrowError('Missing target URLs. Provide --target-url <url> and/or --urls-file <path>.');
     });
 
     it('throws an error when concurrency is outside the supported range', () => {

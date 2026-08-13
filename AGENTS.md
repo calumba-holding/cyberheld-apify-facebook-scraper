@@ -9,8 +9,10 @@ A local CLI scraper with a plugin-oriented architecture.
 Current implementation:
 - target: `facebook`
 - scraper: `post-engagement`
+- scraper: `reel-engagement`
 - scraper: `comment-reactions`
 - scraper: `post-screenshot`
+- scraper: `profile-scraper`
 - target: `instagram`
 - scraper: `post-engagement`
 - scraper: `profile-scraper`

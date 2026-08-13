@@ -37,8 +37,10 @@ export const extractCommentRecord = async (comment: Locator): Promise<ScrapedCom
             const ariaLabel = article.getAttribute('aria-label') || '';
             if (ariaLabel.startsWith(`Comment by ${user} `)) {
                 timestamp = ariaLabel.slice(`Comment by ${user} `.length).trim();
+            } else if (ariaLabel.startsWith(`Kommentar von ${user} `)) {
+                timestamp = ariaLabel.slice(`Kommentar von ${user} `.length).trim();
             } else {
-                const replyMatch = ariaLabel.match(/^Reply by .*? (\d+\s+\w+\s+ago|\d+\w+)$/i);
+                const replyMatch = ariaLabel.match(/^(?:Reply by|Antwort von) .*? (\d+\s+\w+\s+(?:ago|vor)|\d+\w+)$/i);
                 if (replyMatch) timestamp = replyMatch[1].trim();
             }
         }
@@ -46,7 +48,10 @@ export const extractCommentRecord = async (comment: Locator): Promise<ScrapedCom
         let id = 'Unknown ID';
         if (linkWithId) {
             try {
-                id = new URL(linkWithId.href).searchParams.get('comment_id') || 'Unknown ID';
+                const commentUrl = new URL(linkWithId.href);
+                id = commentUrl.searchParams.get('reply_comment_id')
+                    || commentUrl.searchParams.get('comment_id')
+                    || 'Unknown ID';
             } catch {
                 id = 'Unknown ID';
             }

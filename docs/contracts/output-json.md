@@ -69,6 +69,13 @@ All scrape runs emit one JSON object to stdout.
     externalLinks: string[];
     counts: { posts?: number; followers?: number; following?: number };
     indicators: { verified: boolean; private: boolean };
+    overview?: unknown;
+    tabs?: Record<string, unknown>;
+    moreSections?: Record<string, unknown>;
+    recentPosts?: unknown[];
+    requestedPostCount?: number;
+    extractedPostCount?: number;
+    errors?: string[];
   };
   artifacts?: {
     screenshots?: { localPath: string }[];
@@ -172,6 +179,8 @@ Facebook `post-engagement` items for watch/video URLs may populate `artifacts.so
 ## Profile-scraper rule
 
 Profile scrapes populate `profile` and may populate `artifacts.screenshots`.
+
+Facebook profile scrapes also retain the extracted overview, tab contents, More-menu sections, recent posts, requested/extracted post counts, and non-fatal section errors. They are `PARTIAL` when fewer than the requested posts are recovered or section errors remain.
 
 They do not need to populate:
 - `post`

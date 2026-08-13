@@ -20,6 +20,8 @@ export interface RunScrapeOptions {
     expandComments?: boolean;
     /** Watch mode: skip post-reaction extraction (much faster polls). */
     commentsOnly?: boolean;
+    /** Profile scraper: maximum number of recent posts to collect. */
+    maxPosts?: number;
 }
 
 export interface ProfileLoginOptions {
@@ -136,6 +138,13 @@ export interface ProfileData {
     externalLinks: string[];
     counts: ProfileCounts;
     indicators: ProfileIndicators;
+    overview?: unknown;
+    tabs?: Record<string, unknown>;
+    moreSections?: Record<string, unknown>;
+    recentPosts?: unknown[];
+    requestedPostCount?: number;
+    extractedPostCount?: number;
+    errors?: string[];
 }
 
 export interface ProfileScrapeResult extends BaseScrapeResult {
